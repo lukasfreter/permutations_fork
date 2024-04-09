@@ -52,6 +52,11 @@ def list_equivalent_elements():
                 #add appropriate entries to dictionaries
                 indices_elements.append(copy(element))
                 indices_elements_inv[_comp_tuple(element)] = count
+                
+    print(spins,'\n')
+    print(indices_elements,'\n')
+    print(indices_elements_inv,'\n')
+    
 
 
 def setup_spin_indices(ns):
