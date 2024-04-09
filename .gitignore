@@ -14,6 +14,7 @@ develop-eggs/
 dist/
 downloads/
 figures/
+results/
 eggs/
 .eggs/
 lib/
