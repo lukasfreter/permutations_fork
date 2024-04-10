@@ -46,6 +46,11 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
         c_ops[count] = c_ops[count].todense()
         
     Hfull = H.todense()
+    ############ DELETE THIS DIRECTLY AFTER DEBUGGING#################
+    # import numpy as np
+    # Hfull = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]])
+    # print(Hfull)
+    #########################################################
     
     arglist = []
     for count_p1 in range(ldim_p):
@@ -112,23 +117,26 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
     left = element[0:nspins+1]
     right = element[nspins+1:2*nspins+2]
     tol = 1e-10
-    
+   # print(f'\nIn calculate Line: left={left}, right={right}')
     L_line = zeros((1, length), dtype = complex)
+    
 
         
     for count_phot in range(ldim_p):
         for count_s in range(ldim_s):
             for count_ns in range(nspins):
-                    
+                #print(f'\ncount_phot={count_phot}, count_s={count_s}, count_ns={count_ns}')
                 #keep track of if we have done the n1/n2 calculations
                 n1_calc = False
                 n2_calc = False
                     
                 #calculate appropriate matrix elements of H
                 Hin = get_element(H, [left[0], left[count_ns+1]], [count_phot, count_s])
-                    
+                #print(f'ELEMENT left: {ldim_s*left[0] + left[count_ns+1]}, {ldim_s*count_phot + count_s}')
                 #only bother if H is non-zero
                 if abs(Hin)>tol:
+                    
+                    #print('\n')
                     #work out which elements of rho this couples to
                     #note the resolution of identity here is small because H only acts between photon and one spin
                     n1_element = copy(left)
@@ -139,6 +147,8 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     #get the indices of the equivalent element to the one which couples
                     spinnj = indices_elements_inv[get_equivalent_dm_tuple(concatenate((n1_element[1:], right[1:])))]
                     rhonj = (length//ldim_p)*n1_element[0] +length//(ldim_p*ldim_p)*right[0] + spinnj
+                   # print(f'Hin={Hin},spinnj={spinnj},rhonj={rhonj}')
+
                     
                     #increment L
                     L_line[0, rhonj] = L_line[0, rhonj] -1j * Hin
@@ -154,6 +164,8 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     
                     spinin = indices_elements_inv[get_equivalent_dm_tuple(concatenate((left[1:], n2_element[1:])))]
                     rhoin = (length//ldim_p)*left[0] +length//(ldim_p*ldim_p)*n2_element[0] + spinin
+                   # print(f'Hnj={Hnj},spinin={spinin},rhoin={rhoin}')
+                    
                     L_line[0, rhoin] = L_line[0, rhoin] + 1j * Hnj
                     
                 for count_cop in range(n_cops):
@@ -205,6 +217,7 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                                     spinmn = indices_elements_inv[get_equivalent_dm_tuple(concatenate((m1_element[1:], n2_element[1:])))]
                                     rhomn = (length//ldim_p)*m1_element[0] + length//(ldim_p*ldim_p)*n2_element[0] + spinmn
                                     L_line[0, rhomn] = L_line[0, rhomn] + Xim*Xdagnj 
+
     L_line = csr_matrix(L_line)
     return L_line
     
