@@ -52,7 +52,6 @@ def list_equivalent_elements():
                 #add appropriate entries to dictionaries
                 indices_elements.append(copy(element))
                 indices_elements_inv[_comp_tuple(element)] = count
-    print(len(indices_elements))
     
 
 

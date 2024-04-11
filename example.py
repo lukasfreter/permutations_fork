@@ -16,8 +16,9 @@ from propagate import time_evolve
 from expect import setup_convert_rho_nrs
 import pickle
 
-ntls = 4# number 2LS
-nphot = 2 # photon fock space truncation
+
+ntls = 1# number 2LS
+nphot = 2# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 
@@ -39,8 +40,10 @@ t0=time()
 # Note: due to the different definitions of sigma_z in this code and qutip code
 # we need factors of 1/2 and 1/4 to multiply w0 and gamma_phi, such that 
 # the w0 and gamma_phi we define above are equivalent in both codes
-L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False)
+L = setup_Dicke(wc, w0/2, 0.0, 0, 0.0, 0, 0, 0, progress=False)
+print(initial)
 sys.exit()
+L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False)
 print('setup L in {:.1f}s'.format(time()-t0), flush=True)
 
 n = tensor(create(nphot)*destroy(nphot), qeye(2))

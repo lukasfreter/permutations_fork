@@ -49,8 +49,9 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
     ############ DELETE THIS DIRECTLY AFTER DEBUGGING#################
     # import numpy as np
     # Hfull = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]])
-    # print(Hfull)
-    #########################################################
+    # Hfull = np.array([[1,2],[3,4]])
+    #print(Hfull)
+    ########################################################
     
     arglist = []
     for count_p1 in range(ldim_p):
@@ -61,7 +62,7 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
                 element = concatenate(([count_p1], left, [count_p2], right))
                 arglist.append((element, Hfull, c_ops, c_ops_2, c_ops_dag, ldim_p*ldim_p*num_elements))
         
-    
+    print(len(arglist))
     #parallel version
     if parallel:
         if num_threads == None:
