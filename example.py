@@ -18,7 +18,7 @@ import pickle
 import operators
 
 
-ntls = 1# number 2LS
+ntls = 2# number 2LS
 nphot = 2# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -37,6 +37,7 @@ list_equivalent_elements() # create mapping to/from unique spin states
 setup_convert_rho_nrs(1) # conversion matrix from full to photon + single-spin RDM
 
 
+
 initial = setup_rho(basis(nphot, 0), basis(2,0)) # initial state in compressed representation, 0 photons, spin UP (N.B. TLS vs Pauli ordering of states)
 #import scipy.sparse as sp
 #r = np.array([[1/2, 0,1j],[0,1/2, 2j],[-1j, -2j,0]])
@@ -46,7 +47,7 @@ t0=time()
 # Note: due to the different definitions of sigma_z in this code and qutip code
 # we need factors of 1/2 and 1/4 to multiply w0 and gamma_phi, such that 
 # the w0 and gamma_phi we define above are equivalent in both codes
-
+sys.exit()
 
 L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False)
 print(operators.sigmaz().todense())

@@ -10,7 +10,7 @@ def setup_basis(ns, ls, lp):
 
     # basic input checks
     assert isinstance(ls, int) and ls > 0, "Photon dimension must be positive int"
-    assert isinstance(lp, int) and lp > 0#1, "Spin dimension must be int greater than 1"
+    assert isinstance(lp, int) and lp > 1, "Spin dimension must be int greater than 1"
     assert isinstance(ns, int) and ns > 0, "Number of spins must be positive int"
     
     # set global variables
@@ -46,9 +46,11 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
         c_ops[count] = c_ops[count].todense()
         
     Hfull = H.todense()
+    #Hfull[0,3]=0.8
+    #print(Hfull)
     ############ DELETE THIS DIRECTLY AFTER DEBUGGING#################
     # import numpy as np
-    # Hfull = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]])
+    #Hfull = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]])
     # Hfull = np.array([[1,2],[3,4]])
     #print(Hfull)
     ########################################################
@@ -94,6 +96,7 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
     #serial version
     L_lines = []
     for count in range(ldim_p*ldim_p*len(indices_elements)):
+        print(f'Element: {arglist[count][0]}')
         L_lines.append(calculate_L_fixed(arglist[count]))
         if progress:
             bar.update()
@@ -124,8 +127,11 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
 
         
     for count_phot in range(ldim_p):
+        print(f'count phot: {count_phot}')
         for count_s in range(ldim_s):
+            print(f'count s: {count_s}')
             for count_ns in range(nspins):
+                #print(f'count ns: {count_ns}')
                 #print(f'\ncount_phot={count_phot}, count_s={count_s}, count_ns={count_ns}')
                 #keep track of if we have done the n1/n2 calculations
                 n1_calc = False
@@ -133,6 +139,7 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     
                 #calculate appropriate matrix elements of H
                 Hin = get_element(H, [left[0], left[count_ns+1]], [count_phot, count_s])
+                print(f'Hin: {Hin}')
                 #print(f'ELEMENT left: {ldim_s*left[0] + left[count_ns+1]}, {ldim_s*count_phot + count_s}')
                 #only bother if H is non-zero
                 if abs(Hin)>tol:
@@ -156,7 +163,7 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     
                 #same for other part of commutator
                 Hnj = get_element(H, [count_phot, count_s], [right[0], right[count_ns+1]])
-                    
+                print(f'Hnj: {Hnj}')    
                 if abs(Hnj)>tol:
                     n2_element = copy(right)
                     n2_element[0] = count_phot
@@ -221,6 +228,62 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
 
     L_line = csr_matrix(L_line)
     return L_line
+
+
+
+def setup_L_block(H, c_ops):
+    
+    """ Generate Liouvillian for Dicke Hamiltonian 
+        H = omega*adag*a + sum_n{ omega0*sz_n  + g*(a*sp_n + adag*sm_n) }
+        with collective loss c_ops = kappa L[a]  and individual loss
+        c_ops = sum_n { gam_phi L[sigmaz_n] + gam_dn L[sigmam_n] }
+        in Block structure. Blocks are denoted by their total excitation
+        nu = n_phot + n_up (n_up is number of excited spins)
+        Block labeled nu only couples to itself and to the block nu+1 
+        (due to weak U(1) symmetry)
+
+    """
+    
+    global nspins, ldim_s, ldim_p
+    from indices import indices_elements, indices_elements_inv, get_equivalent_dm_tuple
+    
+    nu = nspins  # choose excitation number -> choose block
+    L_nu = []
+    # find elements in that block
+    for spin_element in indices_elements:
+        left = spin_element[:nspins]
+        right = spin_element[nspins:]
+        
+        # spin excitation number equals number of ones in left/right
+        m_left = sum(left)
+        m_right = sum(right)
+        
+        if m_left > nu or m_right > nu: # do not consider if spin excitation is larger than total excitation
+            continue 
+        
+        # photon excitation: nu-m
+        n_left = nu - m_left
+        n_right = nu - m_right
+        print(f'Element: {left}, {right}. left: {m_left}, right: {m_right}\n')
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+
+
     
 def setup_op(H, num_threads):
     
