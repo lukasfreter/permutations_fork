@@ -1,5 +1,6 @@
 indices_elements = []
 indices_elements_inv = {}
+mapping_block = []
 
 # Sets up two dictionaries:
 """ 1) indices_elements maps from a reduced density matrix index to a vector 
@@ -85,6 +86,43 @@ def setup_spin_indices(ns):
         spin_indices_temp = copy(spin_indices)
     
     return spin_indices
+
+
+def setup_mapping_block():
+    """
+    Generate mapping between reduced representation of density matrix and
+    the block structure, which is grouped in different numbers of total excitations
+    of photons + spins. Note: 0 in spin array means spin up!
+    For now, nu_max (maximum excitation) is set to nspins, because the initial 
+    condition is always all spins up and zero photons in the cavity.
+    
+    Structure of mapping_block = [ [indices of nu_max] , [indices of nu_max-1], ... [indices of 0]]
+
+    """
+    from basis import nspins, ldim_p, ldim_s
+    global mapping_block, indices_elements
+    
+    num_elements = len(indices_elements)
+    
+    nu_max = nspins # maximum excitation number IF initial state is all spins up and zero photons
+    mapping_block = [ [] for _ in range(nu_max+1)] # list of nu_max+1 empty lists
+    for count_p1 in range(ldim_p):
+        for count_p2 in range(ldim_p):
+            for count in range(num_elements):
+                element = indices_elements[count]
+                element_index = ldim_p*num_elements*count_p1 + num_elements*count_p2 + count
+                left = element[0:nspins]
+                right = element[nspins:2*nspins]
+                
+                # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
+                m_left = nspins-sum(left)
+                m_right = nspins-sum(right)
+                # calculate nu
+                nu_left = m_left + count_p1
+                nu_right = m_right + count_p2
+                if nu_left == nu_right and nu_left <= nu_max:
+                    mapping_block[nu_max - nu_left].append(element_index)
+    print(mapping_block)
     
 
 def _index_to_element(index, ns= None):

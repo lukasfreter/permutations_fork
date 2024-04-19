@@ -268,19 +268,7 @@ def setup_L_block(H, c_ops):
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+ 
     
 
 
@@ -409,6 +397,83 @@ def setup_rho(rho_p, rho_s):
                 for count_ns in range(nspins):
                     rho_vec[element_index] *= rho_s[left[count_ns], right[count_ns]] 
     return rho_vec
+
+
+def setup_rho_block(rho_p, rho_s):
+    """ Same as 'setup_rho', but in block format, i.e. elements are grouped 
+    according to their excitation number. To do this, use the mapping_block list
+    """
+    
+    from indices import indices_elements, mapping_block
+    from numpy import zeros
+    
+    num_elements = len(indices_elements)
+    blocks = len(mapping_block)
+    
+    rho_vec = zeros(ldim_p*ldim_p*num_elements, dtype = complex)    
+    for count_p1 in range(ldim_p):
+        for count_p2 in range(ldim_p):
+            for count in range(num_elements):
+                element = indices_elements[count]
+                element_index = ldim_p*num_elements*count_p1 + num_elements*count_p2 + count
+                left = element[0:nspins]
+                right = element[nspins:2*nspins]
+                
+                # # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
+                # m_left = nspins-sum(left)
+                # m_right = nspins-sum(right)
+                # # calculate nu
+                # nu_left = m_left + count_p1
+                # nu_right = m_right + count_p2
+                # if nu_left == nu_right and nu_left <= nu_max:
+                #     mapping[nu_left].append(element_index)
+                #     #print(f'Element: left: ({count_p1},{m_left}), right: ({count_p2},{m_right})')  
+                    
+                rho_vec[element_index] = rho_p[count_p1, count_p2]
+                for count_ns in range(nspins):
+                    rho_vec[element_index] *= rho_s[left[count_ns], right[count_ns]]
+    # Now use the mapping list to get the desired block structure from the whole rho_vec:
+    rho_vec_block = []
+    for count in range(blocks):
+        rho_vec_block.append(rho_vec[mapping_block[count]])
+    print(rho_vec_block)
+                    
+                
+    return rho_vec
+    
+    
+    
+    """ come back to this idea later maybe, it might be more efficient. For now,
+    Let us copy the setup_rho and just take the elements we need."""
+    # from indices import indices_elements
+    
+    # num_elements = len(indices_elements)
+    
+    # rho_vec = []
+    # nu_max = nspins # maximum excitation number IF initial state is all spins up and zero photons
+    
+    # for nu in range(nu_max, -1, -1): # from nu_max to nu=0
+    #     print(nu)
+    #     for count in range(num_elements):
+    #         element = indices_elements[count]
+    #         left = element[:nspins]
+    #         right = element[nspins:]
+            
+    #         # spin excitation number equals number of ones in left/right
+    #         m_left = sum(left)
+    #         m_right = sum(right)
+    #         if m_left > nu or m_right > nu: # do not consider if spin excitation is larger than total excitation
+    #             continue 
+            
+    #         # photon excitation: nu-m
+    #         n_left = nu - m_left
+    #         n_right = nu - m_right
+            
+    #         print(f'Element: left: ({n_left},{m_left}), right: ({n_right},{m_right})')    
+    #         element_index = ldim_p*num_elements*n_left + num_elements*n_right + count
+    #         print(f'Index: {element_index}\n')
+
+            
 
 
                  
