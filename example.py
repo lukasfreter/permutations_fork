@@ -18,7 +18,7 @@ import pickle
 import operators
 
 
-ntls = 1# number 2LS
+ntls = 20# number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -29,7 +29,7 @@ Omega = 0.4
 g = Omega / np.sqrt(ntls)
 kappa = 0#1e-02
 gamma = 0#1e-03
-gamma_phi =0#3e-02
+gamma_phi =3e-02
 
 # SETUP
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
@@ -47,15 +47,9 @@ t0=time()
 # Note: due to the different definitions of sigma_z in this code and qutip code
 # we need factors of 1/2 and 1/4 to multiply w0 and gamma_phi, such that 
 # the w0 and gamma_phi we define above are equivalent in both codes
-sys.exit()
 
 L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False)
-print(operators.sigmaz().todense())
-sys.exit()
-print(initial)
-x=L.todense()
-print(L.todense())
-sys.exit()
+
 print('setup L in {:.1f}s'.format(time()-t0), flush=True)
 
 n = tensor(create(nphot)*destroy(nphot), qeye(2))
@@ -78,8 +72,8 @@ axes[0].set_ylabel(r'$n$')
 axes[0].plot(ts, ns.real)
 axes[1].plot(ts, ps.real)
 axes[1].set_ylabel(r'$\langle \sigma^+\sigma^-\rangle$')
-fig.savefig('figures/example.png',dpi=300, bbox_inches='tight')
-
+#fig.savefig('figures/example.png',dpi=300, bbox_inches='tight')
+plt.show()
 
 params = {
     'method': 'permutation',
@@ -107,9 +101,9 @@ data = {
         'runtime':runtime,
         }
 
-filename = f'results/permutation_{params["method"]}_N{ntls}_Delta{wc-w0}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
-filename='results/perm_comp.pkl'
-with open(filename, 'wb') as handle:
-    pickle.dump(data,handle)
+# filename = f'results/permutation_{params["method"]}_N{ntls}_Delta{wc-w0}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
+# filename='results/perm_comp.pkl'
+# with open(filename, 'wb') as handle:
+#     pickle.dump(data,handle)
     
 
