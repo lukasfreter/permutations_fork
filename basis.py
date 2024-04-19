@@ -64,7 +64,7 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
                 element = concatenate(([count_p1], left, [count_p2], right))
                 arglist.append((element, Hfull, c_ops, c_ops_2, c_ops_dag, ldim_p*ldim_p*num_elements))
         
-    print(len(arglist))
+    #print(len(arglist))
     #parallel version
     if parallel:
         if num_threads == None:
@@ -96,7 +96,7 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
     #serial version
     L_lines = []
     for count in range(ldim_p*ldim_p*len(indices_elements)):
-        print(f'Element: {arglist[count][0]}')
+        #print(f'Element: {arglist[count][0]}')
         L_lines.append(calculate_L_fixed(arglist[count]))
         if progress:
             bar.update()
@@ -330,7 +330,7 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
         # to same nu, stored in L0
         for count in range(current_block):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
-            print(f'Element: {arglist[idx][0]}')
+            #print(f'Element: {arglist[idx][0]}')
             line = calculate_L_fixed(arglist[idx]) # calculate the whole line of liouvillian for this element
             #line = csr_matrix([[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]])
             # first index: row. Since calculate_L_fixed returns a matrix, the row index must be chosen as 0
@@ -345,17 +345,12 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
             bar.update()
         # append block matrix to L0
         L0.append(vstack(line_block_nu)) 
-        print(nu)
-
-        print(L0[nu].todense())
 
         if nu < num_blocks -1:
             L1.append(vstack(line_block_nup))
-            print(L1[nu].todense())
 
                    
-    
-    return L0
+    return L0,L1
         
         
  
@@ -516,7 +511,7 @@ def setup_rho_block(rho_p, rho_s):
     rho_vec_block = []
     for count in range(blocks):
         rho_vec_block.append(rho_vec[mapping_block[count]])
-    print(rho_vec_block)
+    #print(rho_vec_block)
     
     return rho_vec_block
     

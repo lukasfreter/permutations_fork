@@ -96,7 +96,7 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads
     H = omega*tensor(num, qeye(ldim_s))/nspins + omega0*tensor(qeye(ldim_p), sigmaz()) + U*tensor(num, sigmaz())
     H = H + g*(tensor(create(ldim_p), sigmam()) +  tensor(destroy(ldim_p), sigmap()))
     H = H + gp*(tensor(create(ldim_p), sigmap()) +  tensor(destroy(ldim_p), sigmam()))
-    print(H.todense())
+   # print(H.todense())
     
     c_ops=[]
     c_ops.append(sqrt(kappa/nspins)*tensor(destroy(ldim_p), qeye(ldim_s)))

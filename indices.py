@@ -127,8 +127,8 @@ def setup_mapping_block():
                     el = concatenate(([count_p1], left, [count_p2],right))
                     mapping_block[nu_left].append(element_index)
                     elements_block[nu_left].append(el)
-    print(mapping_block)
-    print(elements_block)
+    #print(mapping_block)
+    #print(elements_block)
     
 
 def _index_to_element(index, ns= None):

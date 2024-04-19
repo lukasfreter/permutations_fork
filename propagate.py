@@ -97,6 +97,136 @@ def time_evolve(L, initial, tend, dt, expect_oper=None, atol=1e-5, rtol=1e-5,
         if not save_states:
             output.rho.append(rho) # record final state in this case (otherwise already recorded)
         return output
+    
+    
+    
+
+def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rtol=1e-5,
+                progress=False, save_states=None):
+    """Time evolve initial state using L0, L1 block structure Liouvillian matrices.
+    This only works for weak U(1) symmetry.
+
+    expect_oper should be a list of operators that each either act on the photon
+    (dim_lp Z dim_lp), the photon and one spin (dim_lp*dim_ls X dim_lp*dim_ls), the
+    photon and two spins... etc. setup_convert_rho_nrs(X) must have been run with
+    X = 0, 1, 2,... prior to the calculation.
+
+    progress==True writes progress in % for the time evolution
+    """
+    from scipy.integrate import ode
+    from numpy import zeros, array
+    from expect import expect_comp
+    from indices import mapping_block
+    from basis import ldim_p
+    from indices import indices_elements
+    
+    dim_rho_compressed = ldim_p**2 * len(indices_elements)
+    num_blocks = len(mapping_block)
+    t0 = 0
+    
+    # first calculate block nu_max
+    r = ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
+    r.set_initial_value(initial[num_blocks-1],t0).set_f_params(L0[num_blocks-1])
+    output = Results()
+    #Record initial values
+    output.t.append(r.t)
+    output.rho.append(rho_block_to_compressed(initial[num_blocks-1]))
+    ntimes = int(tend/dt)+1
+    
+    if progress:
+        bar = Progress(ntimes, description='Time evolution under L...', start_step=1)
+    if save_states is None:
+        save_states = True if expect_oper is None else False
+    if not save_states and expect_oper is None:
+        print('Warning: Not recording states or any observables. Only initial and final'\
+                ' compressed state will be returned.')
+  
+    if expect_oper == None:
+        while r.successful() and r.t < tend:
+            rho = r.integrate(r.t+dt)
+            if save_states:
+                output.rho.append(rho)
+            output.t.append(r.t)
+            if progress:
+                bar.update()
+        return output
+    
+    else:
+        output.expect = zeros((len(expect_oper), ntimes), dtype=complex)
+        output.expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[num_blocks-1])], expect_oper)).flatten()
+        n_t=1
+        while r.successful() and n_t<ntimes:
+            rho = r.integrate(r.t+dt)
+            output.expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho)], expect_oper)).flatten()
+            output.t.append(r.t)
+            if save_states:
+                output.rho.append(rho_block_to_compressed(rho))
+            n_t += 1
+            if progress:
+                bar.update()
+        if not save_states:
+            output.rho.append(rho) # record final state in this case (otherwise already recorded)
+        return output
+    
+    
+    # for nu in range(num_blocks, -1, -1): # loop through blocks in reverse order, start from nu_max
+    #     r = ode(_intfunc).set_integrator('zvode', method='bdf', atol=atol, rtol=rtol)
+    #     r.set_initial_value(initial, t0).set_f_params(L)
+    #     output = Results()
+    #     # Record initial values
+    #     output.t.append(r.t)
+    #     output.rho.append(initial)
+    #     ntimes = int(tend/dt)+1
+    #     if progress:
+    #         bar = Progress(ntimes, description='Time evolution under L...', start_step=1)
+    #     if save_states is None:
+    #         save_states = True if expect_oper is None else False
+    #     if not save_states and expect_oper is None:
+    #         print('Warning: Not recording states or any observables. Only initial and final'\
+    #                 ' compressed state will be returned.')
+        
+    #     if expect_oper == None:
+    #         while r.successful() and r.t < tend:
+    #             rho = r.integrate(r.t+dt)
+    #             if save_states:
+    #                 output.rho.append(rho)
+    #             output.t.append(r.t)
+    #             if progress:
+    #                 bar.update()
+    #         return output
+    #     else:
+    #         output.expect = zeros((len(expect_oper), ntimes), dtype=complex)
+    #         output.expect[:,0] = array(expect_comp([initial], expect_oper)).flatten()
+    #         n_t=1
+    #         while r.successful() and n_t<ntimes:
+    #             rho = r.integrate(r.t+dt)
+    #             output.expect[:,n_t] = array(expect_comp([rho], expect_oper)).flatten()
+    #             output.t.append(r.t)
+    #             if save_states:
+    #                 output.rho.append(rho)
+    #             n_t += 1
+    #             if progress:
+    #                 bar.update()
+    #         if not save_states:
+    #             output.rho.append(rho) # record final state in this case (otherwise already recorded)
+    #         return output
+
+
+
+def rho_block_to_compressed(rho):
+    """ Calculate the compressed density matrix from the block density matrix"""
+    from indices import mapping_block
+    from basis import ldim_p
+    from indices import indices_elements
+    from numpy import zeros
+    
+    dim_rho_compressed = ldim_p**2 * len(indices_elements)
+    num_blocks = len(mapping_block)
+    rho_compressed = zeros(dim_rho_compressed,dtype='complex')
+    rho_compressed[mapping_block[num_blocks-1]] = rho
+    
+    return rho_compressed
+    
 
 def _intfunc(t, y, L):
     return (L.dot(y))
