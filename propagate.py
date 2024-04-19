@@ -123,15 +123,19 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
     dim_rho_compressed = ldim_p**2 * len(indices_elements)
     num_blocks = len(mapping_block)
     t0 = 0
+    ntimes = int(tend/dt)+1
+    output_nu = []
+    for i in range(num_blocks):
+        output_nu.append(Results()) # create output for each block
+        
     
     # first calculate block nu_max
     r = ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
     r.set_initial_value(initial[num_blocks-1],t0).set_f_params(L0[num_blocks-1])
-    output = Results()
     #Record initial values
-    output.t.append(r.t)
-    output.rho.append(rho_block_to_compressed(initial[num_blocks-1]))
-    ntimes = int(tend/dt)+1
+    output_nu[num_blocks-1].t.append(r.t)
+    output_nu[num_blocks-1].rho.append(rho_block_to_compressed(initial[num_blocks-1], num_blocks-1))
+
     
     if progress:
         bar = Progress(ntimes, description='Time evolution under L...', start_step=1)
@@ -145,28 +149,71 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
         while r.successful() and r.t < tend:
             rho = r.integrate(r.t+dt)
             if save_states:
-                output.rho.append(rho)
-            output.t.append(r.t)
+                output_nu[num_blocks-1].rho.append(rho)
+            output_nu[num_blocks-1].t.append(r.t)
             if progress:
                 bar.update()
-        return output
     
     else:
-        output.expect = zeros((len(expect_oper), ntimes), dtype=complex)
-        output.expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[num_blocks-1])], expect_oper)).flatten()
+        output_nu[num_blocks-1].expect = zeros((len(expect_oper), ntimes), dtype=complex)
+        output_nu[num_blocks-1].expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[num_blocks-1], num_blocks-1)], expect_oper)).flatten()
         n_t=1
         while r.successful() and n_t<ntimes:
             rho = r.integrate(r.t+dt)
-            output.expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho)], expect_oper)).flatten()
-            output.t.append(r.t)
+            output_nu[num_blocks-1].expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho,num_blocks-1)], expect_oper)).flatten()
+            output_nu[num_blocks-1].t.append(r.t)
             if save_states:
-                output.rho.append(rho_block_to_compressed(rho))
+                output_nu[num_blocks-1].rho.append(rho_block_to_compressed(rho, num_blocks-1))
             n_t += 1
             if progress:
                 bar.update()
         if not save_states:
-            output.rho.append(rho) # record final state in this case (otherwise already recorded)
-        return output
+            output_nu[num_blocks-1].rho.append(rho_block_to_compressed(rho, num_blocks-1)) # record final state in this case (otherwise already recorded)
+    
+    # INCLUDE CHECK IF COUPLING TO DIFFERENT NU IS ZERO
+    
+    for nu in range(num_blocks-2, -1,-1):
+        r = ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
+        r.set_initial_value(initial[nu],t0).set_f_params(L0[nu])
+        #Record initial values
+        output_nu[nu].t.append(r.t)
+        output_nu[nu].rho.append(rho_block_to_compressed(initial[nu],nu))
+        
+        if expect_oper == None:
+            while r.successful() and r.t < tend:
+                rho = r.integrate(r.t+dt)
+                if save_states:
+                    output_nu[nu].rho.append(rho_block_to_compressed(rho,nu))
+                output_nu[nu].t.append(r.t)
+                if progress:
+                    bar.update()
+        
+        else:
+            output_nu[nu].expect = zeros((len(expect_oper), ntimes), dtype=complex)
+            output_nu[nu].expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[nu],nu)], expect_oper)).flatten()
+            n_t=1
+            while r.successful() and n_t<ntimes:
+                rho = r.integrate(r.t+dt)
+                output_nu[nu].expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho,nu)], expect_oper)).flatten()
+                output_nu[nu].t.append(r.t)
+                if save_states:
+                    output_nu[nu].rho.append(rho_block_to_compressed(rho,nu))
+                n_t += 1
+                if progress:
+                    bar.update()
+            if not save_states:
+                output_nu[nu].rho.append(rho) # record final state in this case (otherwise already recorded)
+
+        
+    
+    return output_nu[num_blocks-1]
+    
+    
+    
+    
+    
+    
+    
     
     
     # for nu in range(num_blocks, -1, -1): # loop through blocks in reverse order, start from nu_max
@@ -213,7 +260,7 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
 
 
 
-def rho_block_to_compressed(rho):
+def rho_block_to_compressed(rho, nu):
     """ Calculate the compressed density matrix from the block density matrix"""
     from indices import mapping_block
     from basis import ldim_p
@@ -223,7 +270,7 @@ def rho_block_to_compressed(rho):
     dim_rho_compressed = ldim_p**2 * len(indices_elements)
     num_blocks = len(mapping_block)
     rho_compressed = zeros(dim_rho_compressed,dtype='complex')
-    rho_compressed[mapping_block[num_blocks-1]] = rho
+    rho_compressed[mapping_block[nu]] = rho
     
     return rho_compressed
     
