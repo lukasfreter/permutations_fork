@@ -18,8 +18,8 @@ import pickle
 import operators
 
 
-ntls = 2# number 2LS
-nphot = 2# photon fock space truncation
+ntls = 1# number 2LS
+nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 

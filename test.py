@@ -39,19 +39,16 @@ gamma_phi =0#3e-02
 # SETUP
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
 list_equivalent_elements() # create mapping to/from unique spin states
-setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
 setup_mapping_block()       # setup mapping between compressed density matrix and block form
+setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
 
 # Initial state
 initial_block = setup_rho_block(basis(nphot,0),basis(2,0))
 
-sys.exit()
+#sys.exit()
 
 
-initial = setup_rho(basis(nphot, 0), basis(2,0)) # initial state in compressed representation, 0 photons, spin UP (N.B. TLS vs Pauli ordering of states)
-print(initial)
-sys.exit()
+#initial = setup_rho(basis(nphot, 0), basis(2,0)) # initial state in compressed representation, 0 photons, spin UP (N.B. TLS vs Pauli ordering of states)
 
 t0=time()
-L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma).todense()
-
+L = setup_Dicke_block(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)

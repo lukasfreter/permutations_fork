@@ -81,7 +81,7 @@ def setup_Dicke(omega, omega0, U, g, gp, kappa, gam_phi, gam_dn, num_threads = N
 
 
 
-def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn):
+def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads = None, progress = False, parallel = False):
     """ Generate Liouvillian for Dicke model (same as in setup_Dicke) but in 
         Block structure
 
@@ -103,7 +103,7 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn):
     c_ops.append(sqrt(gam_phi)*tensor(qeye(ldim_p), sigmaz()))
     c_ops.append(sqrt(gam_dn)*tensor(qeye(ldim_p), sigmam()))
 
-    return setup_L_block(H, c_ops)
+    return setup_L_block(H, c_ops, num_threads, progress, parallel)
 
 
 
