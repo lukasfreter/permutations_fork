@@ -17,13 +17,12 @@ from basis import setup_basis, setup_rho, setup_rho_block
 from indices import list_equivalent_elements, setup_mapping_block
 from operators import basis, tensor, destroy, create, qeye, sigmap, sigmam
 from models import setup_Dicke_block, setup_Dicke
-from propagate import time_evolve, time_evolve_block
+from propagate import time_evolve, time_evolve_block, time_evolve_block1
 from expect import setup_convert_rho_nrs
 import pickle
 import operators
-
-
-ntls = 20# number 2LS
+    
+ntls =6 #number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -39,15 +38,17 @@ gamma_phi =3e-02
 
 ################# BLOCK STRUCTURE ####################################
 # SETUP
+print(f'Number of spins {ntls}')
+print('BLOCK form')
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
 list_equivalent_elements() # create mapping to/from unique spin states
 setup_mapping_block()       # setup mapping between compressed density matrix and block form
-
 setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
 
 # Initial state
+t0 = time()
 initial_block = setup_rho_block(basis(nphot,0),basis(2,0))
-
+print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 #initial = setup_rho(basis(nphot, 0), basis(2,0)) # initial state in compressed representation, 0 photons, spin UP (N.B. TLS vs Pauli ordering of states)
 
 t0=time()
@@ -60,7 +61,7 @@ p = tensor(qeye(nphot), sigmap()*sigmam())
 ops = [n,p] # operators to calculate expectations for
 
 t0=time()
-resultscomp_block = time_evolve_block(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
+resultscomp_block = time_evolve_block1(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
 # if save_states=False, only operator expectations and initial, final density matrices are recorded
 runtime=time()-t0
 print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
@@ -68,14 +69,20 @@ print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
 
 
 ############################# OLD CODE #####################################
+print('-----------------')
+print('Full form')
+
 # SETUP
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
 list_equivalent_elements() # create mapping to/from unique spin states
 setup_convert_rho_nrs(1) # conversion matrix from full to photon + single-spin RDM
 
+t0 = time()
 initial = setup_rho(basis(nphot, 0), basis(2,0)) # initial state in compressed representation, 0 photons, spin UP (N.B. TLS vs Pauli ordering of states)
-t0=time()
+print('setup initial state full in {:.1f}s'.format(time()-t0), flush=True)
 
+
+t0=time()
 L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False)
 print('setup L in {:.1f}s'.format(time()-t0), flush=True)
 

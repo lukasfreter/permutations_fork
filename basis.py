@@ -290,28 +290,28 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
                 element = concatenate(([count_p1], left, [count_p2], right))
                 arglist.append((element, Hfull, c_ops, c_ops_2, c_ops_dag, ldim_p*ldim_p*num_elements))
     #parallel version
-    if parallel:
-        if num_threads == None:
-            pool = Pool()
-        else:
-            pool = Pool(num_threads)
-        #find all the rows of L
-        L_lines = []
-        if progress:
-            print('Constructing Liouvillian L...')
-            try:
-                import tqdm
-                for line in tqdm.tqdm(pool.imap(calculate_L_fixed, arglist), total=len(arglist)):
-                    L_lines.append(line)
-            except:
-                print('Package tqdm required for progress bar in parallel version')
-                pass
-        if len(L_lines) == 0:
-            L_lines = pool.imap(calculate_L_fixed, arglist)
-        pool.close()
-        #combine into a big matrix                    
-        L = vstack(L_lines)
-        return L
+    # if parallel:
+    #     if num_threads == None:
+    #         pool = Pool()
+    #     else:
+    #         pool = Pool(num_threads)
+    #     #find all the rows of L
+    #     L_lines = []
+    #     if progress:
+    #         print('Constructing Liouvillian L...')
+    #         try:
+    #             import tqdm
+    #             for line in tqdm.tqdm(pool.imap(calculate_L_fixed, arglist), total=len(arglist)):
+    #                 L_lines.append(line)
+    #         except:
+    #             print('Package tqdm required for progress bar in parallel version')
+    #             pass
+    #     if len(L_lines) == 0:
+    #         L_lines = pool.imap(calculate_L_fixed, arglist)
+    #     pool.close()
+    #     #combine into a big matrix                    
+    #     L = vstack(L_lines)
+    #     return L
     
     if progress:
         from propagate import Progress
