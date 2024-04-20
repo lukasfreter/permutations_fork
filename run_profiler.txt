@@ -1,0 +1,4 @@
+python -m cProfile -o profiles/block.prof test_block.py N
+python -m cProfile -o profiles/full.prof test_full.py N
+snakeviz profiles/block.prof
+snakeviz profiles/full.prof
