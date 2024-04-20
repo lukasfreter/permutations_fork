@@ -126,7 +126,10 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
     ntimes = int(tend/dt)+1
         
     output_nu = []
+    r = []
     for nu in range(num_blocks):
+        r.append(ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol))
+        r[nu].set_initial_value(initial[nu],t0).set_f_params(L0[nu])
         output_nu.append(Results()) # create output for each block
         
     
