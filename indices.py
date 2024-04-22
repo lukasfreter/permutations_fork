@@ -96,7 +96,7 @@ def setup_mapping_block():
     For now, nu_max (maximum excitation) is set to nspins, because the initial 
     condition is always all spins up and zero photons in the cavity.
     
-    Structure of mapping_block = [ [indices of nu=0] , [indices of nu=1], ... [indices of nu_max]]
+    Structure of mapping_block = [ [indices of nu=0] , [indices of nu=1], ... [indices of nu_max] ]
 
     """
     from basis import nspins, ldim_p, ldim_s
@@ -118,8 +118,8 @@ def setup_mapping_block():
                 right = element[nspins:2*nspins]
                 
                 # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
-                m_left = nspins-sum(left)
-                m_right = nspins-sum(right)
+                m_left = nu_max-sum(left)
+                m_right = nu_max-sum(right)
                 # calculate nu
                 nu_left = m_left + count_p1
                 nu_right = m_right + count_p2
@@ -127,6 +127,7 @@ def setup_mapping_block():
                     el = concatenate(([count_p1], left, [count_p2],right))
                     mapping_block[nu_left].append(element_index)
                     elements_block[nu_left].append(el)
+    print(mapping_block)
     
 
 def _index_to_element(index, ns= None):
