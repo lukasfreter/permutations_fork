@@ -208,10 +208,7 @@ def time_evolve_block2(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rt
     return output_nu2[num_blocks-1]
     
     
-    
-    
-    
-    
+
 
 def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rtol=1e-5,
                 progress=False, save_states=None):

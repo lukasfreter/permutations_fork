@@ -22,7 +22,7 @@ from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =1 #number 2LS
+ntls =10 #number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -53,7 +53,7 @@ print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 t0=time()
 L0,L1 = setup_Dicke_block(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)
 print('setup L block in {:.1f}s'.format(time()-t0), flush=True)
-sys.exit()
+#sys.exit()
 
 
 
