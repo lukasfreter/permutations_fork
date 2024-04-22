@@ -20,7 +20,7 @@ from basis import setup_basis, setup_rho, setup_rho_block
 from indices import list_equivalent_elements, setup_mapping_block
 from operators import basis, tensor, destroy, create, qeye, sigmap, sigmam
 from models import setup_Dicke_block, setup_Dicke
-from propagate import time_evolve, time_evolve_block, time_evolve_block2
+from propagate import time_evolve, time_evolve_block, time_evolve_block1, time_evolve_block2
 from expect import setup_convert_rho_nrs, setup_convert_rho_block_nrs
 import pickle
 import operators
@@ -73,6 +73,8 @@ ops = [n,p] # operators to calculate expectations for
 
 t0=time()
 resultscomp_block = time_evolve_block(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=False, progress=True)
+#resultscomp_block = time_evolve_block1(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
+# if save_states=False, only operator expectations and initial, final density matrices are recorded
 runtime=time()-t0
 print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
 t0=time()

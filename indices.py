@@ -113,7 +113,7 @@ def setup_mapping_block():
     For now, nu_max (maximum excitation) is set to nspins, because the initial 
     condition is always all spins up and zero photons in the cavity.
     
-    Structure of mapping_block = [ [indices of nu=0] , [indices of nu=1], ... [indices of nu_max]]
+    Structure of mapping_block = [ [indices of nu=0] , [indices of nu=1], ... [indices of nu_max] ]
 
     """
     from basis import nspins, ldim_p, ldim_s
@@ -170,7 +170,6 @@ def setup_mapping_block():
     #for bi in range(len(mapping_block)):
     #    assert np.allclose(mapping_block[bi], mapping_block2[bi])
     #print(elements_block)
-    
 
 def _index_to_element(index, ns= None):
     """convert a combined spin index to an element with ns spins

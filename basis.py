@@ -291,28 +291,28 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
                 element = concatenate(([count_p1], left, [count_p2], right))
                 arglist.append((element, Hfull, c_ops, c_ops_2, c_ops_dag, ldim_p*ldim_p*num_elements))
     #parallel version
-    if parallel:
-        if num_threads == None:
-            pool = Pool()
-        else:
-            pool = Pool(num_threads)
-        #find all the rows of L
-        L_lines = []
-        if progress:
-            print('Constructing Liouvillian L...')
-            try:
-                import tqdm
-                for line in tqdm.tqdm(pool.imap(calculate_L_fixed, arglist), total=len(arglist)):
-                    L_lines.append(line)
-            except:
-                print('Package tqdm required for progress bar in parallel version')
-                pass
-        if len(L_lines) == 0:
-            L_lines = pool.imap(calculate_L_fixed, arglist)
-        pool.close()
-        #combine into a big matrix                    
-        L = vstack(L_lines)
-        return L
+    # if parallel:
+    #     if num_threads == None:
+    #         pool = Pool()
+    #     else:
+    #         pool = Pool(num_threads)
+    #     #find all the rows of L
+    #     L_lines = []
+    #     if progress:
+    #         print('Constructing Liouvillian L...')
+    #         try:
+    #             import tqdm
+    #             for line in tqdm.tqdm(pool.imap(calculate_L_fixed, arglist), total=len(arglist)):
+    #                 L_lines.append(line)
+    #         except:
+    #             print('Package tqdm required for progress bar in parallel version')
+    #             pass
+    #     if len(L_lines) == 0:
+    #         L_lines = pool.imap(calculate_L_fixed, arglist)
+    #     pool.close()
+    #     #combine into a big matrix                    
+    #     L = vstack(L_lines)
+    #     return L
     
     if progress:
         from propagate import Progress
@@ -325,15 +325,17 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
     # Loop through all elements listed in mapping_block, grouped by excitation nu
     for nu in range(num_blocks):
         current_block = len(mapping_block[nu])
-        line_block_nu = []
-        line_block_nup = []
+        line_block_nu = []          # L-line that couples to same excitation number
+        line_block_nup = []         # L-line that couples to excitation number plus 1
         
-        # In the first loop of each nu, calculate part of the liouvillian that couples
-        # to same nu, stored in L0
+        # For each nu, calculate part of the liouvillian that couples
+        # to same nu, stored in L0, and part of the liouvillian that couples to 
+        # nu+1, stored in L1. L0 and L1 are different for each nu.
         for count in range(current_block):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
+            #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            line = calculate_L_fixed(arglist[idx]) # calculate the whole line of liouvillian for this element
+            line = calculate_L_line_block(*arglist[idx]) # calculate the whole line of liouvillian for this element
             #line = csr_matrix([[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]])
             # first index: row. Since calculate_L_fixed returns a matrix, the row index must be chosen as 0
             line_block_nu.append(csr_matrix(line[[0]*current_block,mapping_block[nu]]))  # get the elements that couple to the same nu
@@ -352,12 +354,138 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
 
                    
     return L0,L1
+
+
+def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
+    """ Same as calculate_L_line, but only calculate block terms that are needed."""
+    
+    global nspins, ldim_s, ldim_p
+    from indices import indices_elements, indices_elements_inv, get_equivalent_dm_tuple, mapping_block
+    from numpy import zeros, concatenate, copy
+    from scipy.sparse import lil_matrix, csr_matrix
+    
+    tol = 1e-10
+    n_cops = len(c_ops)
+    num_blocks = len(mapping_block)
+    
+    left = element[0:nspins+1]
+    right = element[nspins+1:2*nspins+2]
+    
+    # calculate nu from left (since left and right must have same excitation number, it does not matter if we choose left or right)
+    nu = left[0] + num_blocks - 1 - sum(left[1:]) #left[0] is number of photons
+    # setup L0 and L1 lines
+    L0_line = zeros((1, len(mapping_block[nu])), dtype = complex)
+    if nu < num_blocks-1:
+        L1_line = zeros((1,len(mapping_block[nu+1])), dtype=complex)
+    
+    
+        
+    for count_phot in range(ldim_p):
+       # print(f'count phot: {count_phot}')
+        for count_s in range(ldim_s):
+            #print(f'count s: {count_s}')
+            for count_ns in range(nspins):
+                #print(f'count ns: {count_ns}')
+                #print(f'\ncount_phot={count_phot}, count_s={count_s}, count_ns={count_ns}')
+                #keep track of if we have done the n1/n2 calculations
+                n1_calc = False
+                n2_calc = False
+                    
+                #calculate appropriate matrix elements of H
+                Hin = get_element(H, [left[0], left[count_ns+1]], [count_phot, count_s])
+               # print(f'Hin: {Hin}')
+                #print(f'ELEMENT left: {ldim_s*left[0] + left[count_ns+1]}, {ldim_s*count_phot + count_s}')
+                #only bother if H is non-zero
+                if abs(Hin)>tol:
+                    
+                    #print('\n')
+                    #work out which elements of rho this couples to
+                    #note the resolution of identity here is small because H only acts between photon and one spin
+                    n1_element = copy(left)
+                    n1_element[0] = count_phot
+                    n1_element[count_ns+1] = count_s
+                    n1_calc = True
+                    
+                    #get the indices of the equivalent element to the one which couples
+                    spinnj = indices_elements_inv[get_equivalent_dm_tuple(concatenate((n1_element[1:], right[1:])))]
+                    rhonj = (length//ldim_p)*n1_element[0] +length//(ldim_p*ldim_p)*right[0] + spinnj
+                   # print(f'Hin={Hin},spinnj={spinnj},rhonj={rhonj}')
+
+                    
+                    #increment L
+                    L_line[0, rhonj] = L_line[0, rhonj] -1j * Hin
+                    
+                #same for other part of commutator
+                Hnj = get_element(H, [count_phot, count_s], [right[0], right[count_ns+1]])
+               # print(f'Hnj: {Hnj}')    
+                if abs(Hnj)>tol:
+                    n2_element = copy(right)
+                    n2_element[0] = count_phot
+                    n2_element[count_ns+1] = count_s
+                    n2_calc = True
+                    
+                    spinin = indices_elements_inv[get_equivalent_dm_tuple(concatenate((left[1:], n2_element[1:])))]
+                    rhoin = (length//ldim_p)*left[0] +length//(ldim_p*ldim_p)*n2_element[0] + spinin
+                   # print(f'Hnj={Hnj},spinin={spinin},rhoin={rhoin}')
+                    
+                    L_line[0, rhoin] = L_line[0, rhoin] + 1j * Hnj
+                    
+                for count_cop in range(n_cops):
+                        
+                    #Do the same as above for each collapse operator
+                    Xin = get_element(c_ops_2[count_cop], [left[0], left[count_ns+1]], [count_phot, count_s])
+                    if abs(Xin)>tol:
+                        if not(n1_calc):
+                            n1_element = copy(left)
+                            n1_element[0] = count_phot
+                            n1_element[count_ns+1] = count_s
+                            n1_calc = True
+                                
+                            spinnj = indices_elements_inv[get_equivalent_dm_tuple(concatenate((n1_element[1:], right[1:])))]
+                            rhonj = (length//ldim_p)*n1_element[0] +length//(ldim_p*ldim_p)*right[0] + spinnj
+                            
+                        L_line[0, rhonj] = L_line[0, rhonj] - 0.5*Xin
+                        
+                    Xnj = get_element(c_ops_2[count_cop], [count_phot, count_s], [right[0], right[count_ns+1]])
+                    if abs(Xnj)>tol:
+                        if not(n2_calc):
+                            n2_element = copy(right)
+                            n2_element[0] = count_phot
+                            n2_element[count_ns+1] = count_s
+                            n2_calc = True
+                    
+                            spinin = indices_elements_inv[get_equivalent_dm_tuple(concatenate((left[1:], n2_element[1:])))]
+                            rhoin = (length//ldim_p)*left[0] +length//(ldim_p*ldim_p)*n2_element[0] + spinin
+                        L_line[0, rhoin] = L_line[0, rhoin] - 0.5*Xnj
+                        
+                    Xdagnj = get_element(c_ops_dag[count_cop], [count_phot, count_s], [right[0], right[count_ns+1]])
+                    #only need to calculate if Xdag is non-zero
+                    if abs(Xdagnj)>tol:
+                        for count_phot2 in range(ldim_p):
+                            for count_s2 in range(ldim_s):
+                                #The term XpXdag requires two resolutions of unity
+                                Xim = get_element(c_ops[count_cop], [left[0], left[count_ns+1]], [count_phot2, count_s2])
+                                if abs(Xim)>tol:
+                                    m1_element = copy(left)
+                                    m1_element[0] = count_phot2
+                                    m1_element[count_ns+1] = count_s2
+                                        
+                                    if not(n2_calc):
+                                        n2_element = copy(right)
+                                        n2_element[0] = count_phot
+                                        n2_element[count_ns+1] = count_s
+                                        n2_calc = True
+                                            
+                                    spinmn = indices_elements_inv[get_equivalent_dm_tuple(concatenate((m1_element[1:], n2_element[1:])))]
+                                    rhomn = (length//ldim_p)*m1_element[0] + length//(ldim_p*ldim_p)*n2_element[0] + spinmn
+                                    L_line[0, rhomn] = L_line[0, rhomn] + Xim*Xdagnj 
+
+    L_line = csr_matrix(L_line)
+    return L_line
         
         
  
     
-
-
     
 def setup_op(H, num_threads):
     
@@ -555,7 +683,6 @@ def setup_rho_block(rho_p, rho_s):
 def get_element(H, left, right):
     global ldim_s
     return H[ldim_s*left[0] + left[1], ldim_s*right[0] + right[1]]
-    
     
     
 
