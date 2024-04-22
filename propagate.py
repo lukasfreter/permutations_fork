@@ -125,22 +125,16 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
     t0 = 0
     ntimes = int(tend/dt)+1
         
-    output_nu = []
-    r = []
-    for nu in range(num_blocks):
-        r.append(ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol))
-        r[nu].set_initial_value(initial[nu],t0).set_f_params(L0[nu])
-        output_nu.append(Results()) # create output for each block
-        
+    output = Results()
+    rhos= [[] for _ in range(num_blocks)] # store all rho for feed forward
     
     # first calculate block nu_max
     nu = num_blocks - 1
     r = ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
     r.set_initial_value(initial[nu],t0).set_f_params(L0[nu])
     #Record initial values
-    output_nu[nu].t.append(r.t)
-    output_nu[nu].rho.append(initial[nu])
-
+    output.t.append(r.t)
+    rhos[nu].append(initial[nu])
     
     if progress:
         bar = Progress(ntimes, description='Time evolution under L...', start_step=1)
@@ -151,73 +145,87 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
                 ' compressed state will be returned.')
             
     
-    # FOR LATER: what if expect_oper = 0
+    # FOR LATER: what if expect_oper = []
     
-    if expect_oper == None:
-        while r.successful() and r.t < tend:
-            rho = r.integrate(r.t+dt)
-            if save_states:
-                output_nu[nu].rho.append(rho)
-            output_nu[nu].t.append(r.t)
-            if progress:
-                bar.update()
+    # if expect_oper == None:
+    #     while r.successful() and r.t < tend:
+    #         rho = r.integrate(r.t+dt)
+    #         if save_states:
+    #             output_nu[nu].rho.append(rho)
+    #         output_nu[nu].t.append(r.t)
+    #         if progress:
+    #             bar.update()
     
-    else:
-        output_nu[nu].expect = zeros((len(expect_oper), ntimes), dtype=complex)
-        #output_nu[nu].expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[nu], nu)], expect_oper)).flatten()
-        n_t=1
-        while r.successful() and n_t<ntimes:
-            rho = r.integrate(r.t+dt)
-            #output_nu[nu].expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho,nu)], expect_oper)).flatten()
-            output_nu[nu].t.append(r.t)
-            #if save_states:
-            output_nu[nu].rho.append(rho)
-            n_t += 1
-            if progress:
-                bar.update()
+    # else:
+    #output.expect = zeros((len(expect_oper), ntimes), dtype=complex)
+    #output.expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[nu], nu)], expect_oper)).flatten()
+    n_t=1
+    while r.successful() and n_t<ntimes:
+        rho = r.integrate(r.t+dt)
+      #  output.expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho,nu)], expect_oper)).flatten()
+        output.t.append(r.t)
+        rhos[nu].append(rho)
+        n_t += 1
+        if progress:
+            bar.update()
         #if not save_states:
         #    output_nu[nu].rho.append(rho) # record final state in this case (otherwise already recorded)
     
     
-    # INCLUDE CHECK IF COUPLING TO DIFFERENT NU IS ZERO
+    # # INCLUDE CHECK IF COUPLING TO DIFFERENT NU IS ZERO
+    
+    # Now, do the feed forward for all other blocks. Need different integration function,
+    # that for this -> _intfunc_block
     
     for nu in range(num_blocks-2, -1,-1):
-        r = ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
-        r.set_initial_value(initial[nu],t0).set_f_params(L0[nu])
+        r = ode(_intfunc_block).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
+        r.set_initial_value(initial[nu],t0).set_f_params(L0[nu], L1[nu], rhos[nu+1][0])
         #Record initial values
-        output_nu[nu].t.append(r.t)
-        output_nu[nu].rho.append(initial[nu])
+        rhos[nu].append(initial[nu])
         
         
         # FOR LATER
-        if expect_oper == None:
-            while r.successful() and r.t < tend:
-                rho = r.integrate(r.t+dt)
-                if save_states:
-                    output_nu[nu].rho.append(rho)
-                output_nu[nu].t.append(r.t)
-                if progress:
-                    bar.update()
+        # if expect_oper == None:
+        #     while r.successful() and r.t < tend:
+        #         rho = r.integrate(r.t+dt)
+        #         if save_states:
+        #             output_nu[nu].rho.append(rho)
+        #         output_nu[nu].t.append(r.t)
+        #         if progress:
+        #             bar.update()
         
-        else:
+        # else:
             #output_nu[nu].expect = zeros((len(expect_oper), ntimes), dtype=complex)
-            output_nu[nu].expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[nu],nu)], expect_oper)).flatten()
-            n_t=1
-            while r.successful() and n_t<ntimes:
-                rho = r.integrate(r.t+dt)
-                output_nu[nu].expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho,nu)], expect_oper)).flatten()
-                output_nu[nu].t.append(r.t)
-                if save_states:
-                    output_nu[nu].rho.append(rho)
-                n_t += 1
-                if progress:
-                    bar.update()
-            if not save_states:
-                output_nu[nu].rho.append(rho) # record final state in this case (otherwise already recorded)
+        #output_nu[nu].expect[:,0] = array(expect_comp([rho_block_to_compressed(initial[nu],nu)], expect_oper)).flatten()
+        n_t=1
+        while r.successful() and n_t<ntimes:
+            rho = r.integrate(r.t+dt)
+            #output_nu[nu].expect[:,n_t] = array(expect_comp([rho_block_to_compressed(rho,nu)], expect_oper)).flatten()
+            #output_nu[nu].t.append(r.t)
+            #if save_states:
+            rhos[nu].append(rho)
+            # update integrator:
+            r = ode(_intfunc_block).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol).set_initial_value(r.y,r.t).set_f_params(L0[nu],L1[nu],rhos[nu+1][n_t])
+            n_t += 1
+
+            if progress:
+                bar.update()
+            
+        # if not save_states:
+            # output_nu[nu].rho.append(rho) # record final state in this case (otherwise already recorded)
+    
+    # Now with all rhos, I can calculate the expectation values:
+    output.expect = zeros((len(expect_oper), ntimes), dtype=complex)
+    for t_idx in range(ntimes):
+        # build density matrix out of blocks
+        rho_compressed = zeros(dim_rho_compressed, dtype=complex)
+        for nu in range(num_blocks):
+            rho_compressed[mapping_block[nu]] = rhos[nu][t_idx]
+            output.expect[:,t_idx] = array(expect_comp([rho_compressed], expect_oper)).flatten()
 
         
     
-    return output_nu[num_blocks-1]
+    return output
     
     
     
@@ -305,6 +313,11 @@ def rho_block_to_compressed(rho, nu):
 
 def _intfunc(t, y, L):
     return (L.dot(y))
+
+def _intfunc_block(t,y, L0, L1, y1):
+    """ For blocks in block structure that couple do different excitation, described
+    by L1 and y1"""    
+    return(L0.dot(y) + L1.dot(y1))
 
 def steady(L, init=None, maxit=1e6, tol=None):
     

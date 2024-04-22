@@ -22,7 +22,7 @@ from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =6 #number 2LS
+ntls =4 #number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -31,8 +31,8 @@ w0 = 1#1.0
 wc = 1.5#0.65
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
-kappa = 0 #1e-02
-gamma = 0 #1e-03
+kappa = 1e-02
+gamma = 1e-03
 gamma_phi =3e-02
 
 
@@ -61,12 +61,12 @@ p = tensor(qeye(nphot), sigmap()*sigmam())
 ops = [n,p] # operators to calculate expectations for
 
 t0=time()
-resultscomp_block = time_evolve_block1(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
+resultscomp_block = time_evolve_block(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
 # if save_states=False, only operator expectations and initial, final density matrices are recorded
 runtime=time()-t0
 print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
 
-
+#sys.exit()
 
 ############################# OLD CODE #####################################
 print('-----------------')
