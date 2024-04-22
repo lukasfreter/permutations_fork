@@ -1,5 +1,6 @@
 convert_rho = None
 convert_rho_dic = {}
+convert_rho_block_dic = {}
 import numpy as np
 from itertools import permutations
 
@@ -40,6 +41,40 @@ def expect_comp(rho_list, ops):
 
     return output
 
+def expect_comp_block(rho_list, nu, ops):
+    from operators import expect, vector_to_operator
+    from basis import ldim_p, ldim_s
+    
+    global convert_rho_block_dic
+    num_blocks = len(convert_rho_block_dic)
+
+    # converted densities matrices (different operators may have different number of
+    # spins; we need a list of reduced density matrices for each number of spins)
+    rhos_converted_dic = {}
+    
+    output = []
+    for op in ops:
+        # number of spins in the target rdm
+        nrs = int(np.log(op.shape[0]//ldim_p)/np.log(ldim_s))
+
+        if nrs not in convert_rho_dic:
+            raise TypeError('need to run setup_convert_rho_nrs({})'.format(nrs))
+
+        # Only convert compressed matrices in rho
+        if nrs not in rhos_converted_dic:
+            rhos_converted_dic[nrs] = []
+            for count in range(len(rho_list)):
+                rho_nrs = convert_rho_block_dic[nrs][nu].dot(rho_list[count])
+                rho_nrs = vector_to_operator(rho_nrs)
+                rhos_converted_dic[nrs].append(rho_nrs)
+        
+        one_output = [] 
+        rhos_converted = rhos_converted_dic[nrs]
+        for count in range(len(rho_list)):
+            one_output.append(expect(rhos_converted[count], op))
+        output.append(one_output)
+
+    return output
 def get_rdms(rho_list, nrs=1, photon=True, dense=True):
     """Extract reduced density matrices for nrs spins including the photon (photon=True)
     or not (photon=False) from a list rho_list of compressed density matrices (as returned
@@ -190,6 +225,123 @@ def setup_convert_rho_nrs(nrs=1):
     convert_rho_nrs = convert_rho_nrs.tocsr()
 
     return convert_rho_nrs
+
+#@profile
+def setup_convert_rho_block_nrs(nrs=1):
+    from basis import nspins, ldim_s, ldim_p
+    from indices import indices_elements, mapping_block
+    from scipy.sparse import lil_matrix
+
+    assert type(nrs) == int, "Argument 'nrs' must be int"
+    assert nrs >= 0, "Argument 'nrs' must be non-negative"
+    assert nspins >= nrs, "Number of spins in reduced density matrix ({}) cannot "\
+            "exceed total number of spins ({})".format(nrs, nspins)
+
+    global convert_rho_block_dic
+
+    num_blocks = len(mapping_block)
+    num_elements = [len(block) for block in mapping_block]
+    nu_max = num_blocks - 1
+
+    convert_rho_block = [
+            lil_matrix(((ldim_p*ldim_s**nrs)**2, num), dtype=float)
+            for num in num_elements
+            ]
+
+    convert_rho_block_dic[nrs] = convert_rho_block
+
+    for count_p1 in range(ldim_p):
+        for count_p2 in range(ldim_p):
+            for count in range(len(indices_elements)):
+                left = indices_elements[count][0:nspins]
+                right = indices_elements[count][nspins:2*nspins]
+                m_left = nspins-sum(left)
+                m_right = nspins-sum(right)
+                nu_left = m_left + count_p1
+                nu_right = m_right + count_p2
+                if nu_left != nu_right or nu_left > nu_max:                   
+                    continue
+                nu = nu_left
+                diff_arg = np.asarray(left != right).nonzero()[0] # indices where bra and ket differ (axis=0)
+                diff_num = len(diff_arg) # number of different spin elements
+                if diff_num > nrs:
+                    continue
+                diff_left = left[diff_arg]
+                diff_right = right[diff_arg]
+                same = np.delete(left, diff_arg) # common elements
+                element_index = ldim_p*len(indices_elements)*count_p1 + len(indices_elements)*count_p2 + count
+                block_element_index = next((i for i, index in enumerate(mapping_block[nu]) if index == element_index), None)
+                if block_element_index is None:
+                    print('CRITICAL: mapping_block at nu={nu} is no index {element_index}!')
+                    sys.exit(1)
+                # fill all matrix elements in column element_index according to different and same spins
+                add_all_block(nrs, nu, count_p1, count_p2, diff_left, diff_right, same, block_element_index)
+    #for nu in range(num_blocks):
+    #    #for element_index in mapping_block[nu]:
+    #        #if element_index
+    #    for count in range(len(indices_elements)):
+    #        left = indices_elements[count][0:nspins]
+    #        right = indices_elements[count][nspins:2*nspins]
+    #        count_p1 = nu - (nspins - sum(left)) # number of photons in left
+    #        count_p2 = nu - (nspins - sum(right)) # number of photons in right
+    #        if count_p1 < 0 or count_p2 < 0 or count_p1 > nu_max or count_p2 > nu_max:
+    #            print(f'photon count incompatible with nu={nu}!')
+    #            continue
+    #        element_index = ldim_p*len(indices_elements)*count_p1 + len(indices_elements)*count_p2 + count
+    #        if element_index not in mapping_block[nu]:
+    #            print(f'{element_index} not in mapping block at nu={nu}!')
+    #            continue
+    #        diff_arg = np.asarray(left != right).nonzero()[0] # indices where bra and ket differ (axis=0)
+    #        diff_num = len(diff_arg) # number of different spin elements
+    #        if diff_num > nrs:
+    #            continue
+    #        # get elements that differ
+    #        diff_left = left[diff_arg]
+    #        diff_right = right[diff_arg]
+    #        same = np.delete(left, diff_arg) # common elements
+    #        element_index = count
+    #        # fill all matrix elements in column element_index according to different and same spins
+    #        add_all_block(nrs, nu, count_p1, count_p2, diff_left, diff_right, same, element_index)
+    
+    convert_rho_block = [block.tocsr() for block in convert_rho_block]
+
+    return convert_rho_block
+
+def add_to_convert_rho_block_dic(nrs, nu, count_p1, count_p2, diff_left, diff_right, same, block_element_index):
+    global convert_rho_block_dic
+    convert_rho_block = convert_rho_block_dic[nrs]
+    # number of permutations of spins in same, each of which contributes one unit 
+    combinations = _multinominal(np.bincount(same))
+    row_indices = get_all_row_indices(count_p1, count_p2, diff_left, diff_right)
+    for row_index in row_indices:
+        convert_rho_block[nu][row_index, block_element_index] = combinations
+
+def add_all_block(nrs, nu, count_p1, count_p2, left, right, same, block_element_index, s_start=0):
+    """Populate all entries in conversion_matrix with row indices associated with permutations of spin values
+    |left> and <right| and column index element_index according to the number of permutations of spin values in 
+    'same'.
+
+    nrs is the number of spins in the target reduced density matrix ('number reduced spins').
+    """
+    from basis import ldim_s
+    if len(left) == nrs:
+        # add contributions from same to rdm at |bra><ket|
+        add_to_convert_rho_block_dic(nrs, nu, count_p1, count_p2,
+                                     left, right, same, block_element_index)
+        return
+    # current |left> too short for rdm, so move element from same to |left> (and <right|)
+    # iterate through all possible values of spin...
+    for s in range(s_start, ldim_s):
+        s_index = next((i for i,sa in enumerate(same) if sa==s), None)
+        # ...but only act on the spins that are actually in same
+        if s_index is None:
+            continue
+        # extract spin value from same, append to bra and ket
+        tmp_same = np.delete(same, s_index)
+        tmp_left = np.append(left, s)
+        tmp_right = np.append(right, s)
+        # repeat until |left> and <right| are correct length for rdm
+        add_all_block(nrs, nu, count_p1, count_p2, tmp_left, tmp_right, tmp_same, block_element_index, s_start=s)
 
 def add_all(nrs, count_p1, count_p2, bra, ket, same, element_index, s_start=0):
     """Populate all entries in conversion_matrix with row indices associated with permutations of spin values

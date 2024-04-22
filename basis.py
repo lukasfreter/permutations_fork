@@ -108,7 +108,8 @@ def setup_L(H, c_ops, num_threads, progress=False, parallel=False):
     
 def calculate_L_fixed(args):
     return calculate_L_line(*args)
-    
+
+#@profile
 def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
     
     global nspins, ldim_s, ldim_p
@@ -315,7 +316,8 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
     
     if progress:
         from propagate import Progress
-        bar = Progress(ldim_p**2 * num_elements, description='Constructing Liouvillian L...')
+        total_points = sum([len(block) for block in mapping_block])
+        bar = Progress(total_points, description='Constructing Liouvillian L...')
 
     #serial version
     L0 = [] # couples nu to nu 
@@ -340,9 +342,8 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
             if nu < num_blocks-1:
                 next_block = len(mapping_block[nu+1])
                 line_block_nup.append(csr_matrix(line[[0]*next_block, mapping_block[nu+1]]))
-            
-        if progress:
-            bar.update()
+            if progress:
+                bar.update()
         # append block matrix to L0
         L0.append(vstack(line_block_nu)) 
 
