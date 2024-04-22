@@ -87,7 +87,7 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads
 
     """
     from operators import tensor, qeye, destroy, create, sigmap, sigmam, sigmaz
-    from basis import nspins, ldim_s, ldim_p, setup_L_block
+    from basis import nspins, ldim_s, ldim_p, setup_L_block, setup_L_block1
     from numpy import sqrt
         
     num = create(ldim_p)*destroy(ldim_p)
@@ -103,7 +103,7 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads
     c_ops.append(sqrt(gam_phi)*tensor(qeye(ldim_p), sigmaz()))
     c_ops.append(sqrt(gam_dn)*tensor(qeye(ldim_p), sigmam()))
 
-    return setup_L_block(H, c_ops, num_threads, progress, parallel)
+    return setup_L_block1(H, c_ops, num_threads, progress, parallel)
 
 
 

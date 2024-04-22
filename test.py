@@ -22,7 +22,7 @@ from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =10 #number 2LS
+ntls =1 #number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep

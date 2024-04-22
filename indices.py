@@ -1,6 +1,7 @@
 indices_elements = []
 indices_elements_inv = {}
 mapping_block = []
+elements_block = []
 
 # Sets up two dictionaries:
 """ 1) indices_elements maps from a reduced density matrix index to a vector 
@@ -103,7 +104,7 @@ def mapping_task(args_tuple):
     nu_right = m_right + count_p2
     if nu_left == nu_right and nu_left <= nu_max:                   
         el = concatenate(([count_p1], left, [count_p2],right))
-        return (nu_left, element_index)
+        return (nu_left, element_index, el)
 
 def setup_mapping_block():
     """
@@ -117,7 +118,7 @@ def setup_mapping_block():
 
     """
     from basis import nspins, ldim_p, ldim_s
-    global mapping_block, indices_elements
+    global mapping_block, indices_elements, elements_block
     from numpy import concatenate
     import numpy as np
     from time import time
@@ -146,30 +147,35 @@ def setup_mapping_block():
             continue
         # try to avoid this?
         mapping_block[result[0]].append(result[1])
+        elements_block[result[0]].append(result[2])
+        
+    print(mapping_block)
+    print(elements_block)
     #print('Parallel mapping block in {:.1f}s'.format(time()-t0)) 
     #t0 = time()
-    #for count_p1 in range(ldim_p):
-    #    for count_p2 in range(ldim_p):
-    #        for count in range(num_elements):
-    #            element = indices_elements[count]
-    #            element_index = ldim_p*num_elements*count_p1 + num_elements*count_p2 + count
-    #            left = element[0:nspins]
-    #            right = element[nspins:2*nspins]
-    #            
-    #            # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
-    #            m_left = nspins-sum(left)
-    #            m_right = nspins-sum(right)
-    #            # calculate nu
-    #            nu_left = m_left + count_p1
-    #            nu_right = m_right + count_p2
-    #            if nu_left == nu_right and nu_left <= nu_max:                   
-    #                el = concatenate(([count_p1], left, [count_p2],right))
-    #                mapping_block2[nu_left].append(element_index)
-    #                elements_block[nu_left].append(el)
-    #print('Serial mapping block in {:.1f}s'.format(time()-t0)) 
-    #for bi in range(len(mapping_block)):
-    #    assert np.allclose(mapping_block[bi], mapping_block2[bi])
-    #print(elements_block)
+    # for count_p1 in range(ldim_p):
+    #     for count_p2 in range(ldim_p):
+    #         for count in range(num_elements):
+    #             element = indices_elements[count]
+    #             element_index = ldim_p*num_elements*count_p1 + num_elements*count_p2 + count
+    #             left = element[0:nspins]
+    #             right = element[nspins:2*nspins]
+                
+    #             # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
+    #             m_left = nspins-sum(left)
+    #             m_right = nspins-sum(right)
+    #             # calculate nu
+    #             nu_left = m_left + count_p1
+    #             nu_right = m_right + count_p2
+    #             if nu_left == nu_right and nu_left <= nu_max:                   
+    #                 el = concatenate(([count_p1], left, [count_p2],right))
+    #                 mapping_block2[nu_left].append(element_index)
+    #                 elements_block[nu_left].append(el)
+    # print('Serial mapping block in {:.1f}s'.format(time()-t0)) 
+    # for bi in range(len(mapping_block)):
+    #     assert np.allclose(mapping_block[bi], mapping_block2[bi])
+    # print(elements_block)
+    
 
 def _index_to_element(index, ns= None):
     """convert a combined spin index to an element with ns spins
