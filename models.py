@@ -89,6 +89,8 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads
     from operators import tensor, qeye, destroy, create, sigmap, sigmam, sigmaz
     from basis import nspins, ldim_s, ldim_p, setup_L_block, setup_L_block1
     from numpy import sqrt
+    
+    from scipy.sparse import csr_matrix
         
     num = create(ldim_p)*destroy(ldim_p)
     
@@ -102,6 +104,20 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads
     c_ops.append(sqrt(kappa/nspins)*tensor(destroy(ldim_p), qeye(ldim_s)))
     c_ops.append(sqrt(gam_phi)*tensor(qeye(ldim_p), sigmaz()))
     c_ops.append(sqrt(gam_dn)*tensor(qeye(ldim_p), sigmam()))
+    
+    # L0_old, L1_old= setup_L_block(H,c_ops,num_threads, progress,parallel)
+    # for c in range(len(c_ops)):
+    #     c_ops[c] = csr_matrix(c_ops[c])
+    # L0_new, L1_new = setup_L_block1(H,c_ops,num_threads,progress,parallel)
+    
+    # x1 = L0_old[1].todense()
+    # x2 = L0_new[1].todense()
+    # print(x1)
+    # print(x2)
+    # x2[1,1]=10
+    
+    # import numpy as np
+    # assert np.allclose(x1,x2)
 
     return setup_L_block1(H, c_ops, num_threads, progress, parallel)
 

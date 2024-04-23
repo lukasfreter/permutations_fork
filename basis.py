@@ -448,10 +448,8 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            line = calculate_L_line_block(*arglist[idx]) # calculate the whole line of liouvillian for this element
-            #line = csr_matrix([[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]])
-            # first index: row. Since calculate_L_fixed returns a matrix, the row index must be chosen as 0
-        #     line_block_nu.append(csr_matrix(line[[0]*current_block,mapping_block[nu]]))  # get the elements that couple to the same nu
+            line0, line1 = calculate_L_line_block(*arglist[idx]) # calculate the whole line of liouvillian for this element
+            line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
         #     # calculate L1 part, that couples to nu+1 only if nu_max has not been reached
         #     if nu < num_blocks-1:
@@ -460,11 +458,11 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
         #     if progress:
         #         bar.update()
         # # append block matrix to L0
-        # L0.append(vstack(line_block_nu)) 
+        L0.append(vstack(line_block_nu)) 
 
         # if nu < num_blocks -1:
         #     L1.append(vstack(line_block_nup))
-    sys.exit()
+   # sys.exit()
 
                    
     return L0,L1
@@ -483,6 +481,8 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
     num_blocks = len(mapping_block)
     num_elements = len(indices_elements)
     
+    # These are the density matrix indices for the element, of which we want
+    # to calculate the time derivative.
     left = element[0:nspins+1]
     right = element[nspins+1:2*nspins+2]
     
@@ -496,6 +496,9 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
         L1_line = []    
     
     # Calculate L0 elements -> in block nu_element
+    if nu_element == 1:
+        print(1)
+    
     for count in range(len(mapping_block[nu_element])):
         idx = mapping_block[nu_element][count] # current index
         
@@ -505,10 +508,35 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
         n_right = mod(idx1, ldim_p)
         n_left = int((idx1 - n_right)/ldim_p)
         
+        # elements which differ in photon number by 2 will never couple:
+        if abs(n_left - left[0]) > 1 or abs(n_right - right[0]) > 1:
+            continue
+        
+        # these are the density matrix indices of the element, which contributes
+        # to the time derivative of the element labeled with "left" and "right" above.
         element_left = indices_elements[element_idx][0:nspins]
         element_right = indices_elements[element_idx][nspins:2*nspins]
         
-        # task: how to get coupling element between element (input of function) and element determined by count
+        left_to_couple = concatenate(([n_left], element_left))
+        right_to_couple = concatenate(([n_right], element_right))
+        
+        
+        if (left_to_couple == left).all() and (right_to_couple == right).all():
+            # this case is if an element couples to itself. Then both parts of the commutator matter.
+            Hin = get_element(H,[left[0], left[1]],[left[0], left[1]])
+            Hnj = get_element(H, [right[0], right[1]],[right[0], right[1]])
+            L0_line[0,count] = L0_line[0,count] -1j * Hin + 1j*Hnj
+            
+        elif (left_to_couple == left).all():
+            Hnj = get_element(H, [right_to_couple[0], right_to_couple[1]],[right[0], right[1]])
+            L0_line[0, count] = L0_line[0, count] + 1j * Hnj
+                
+        elif (right_to_couple == right).all():
+            Hin = get_element(H, [left[0], left[1]],[left_to_couple[0],left_to_couple[1]])
+            L0_line[0, count] = L0_line[0, count] -1j * Hin
+            
+    L0_line = csr_matrix(L0_line)
+    return L0_line, L1_line
         
         # x = indices_elements[element_idx]
         # el = concatenate(([n_left], x[0:nspins], [n_right],x[nspins:2*nspins]))
@@ -855,6 +883,10 @@ def setup_rho_block(rho_p, rho_s):
 def get_element(H, left, right):
     global ldim_s
     return H[ldim_s*left[0] + left[1], ldim_s*right[0] + right[1]]
+
+def get_element_block(H,left,right):
+    global ldim_s
+    return H[ldim_s*left[0] + 1-left[1], ldim_s*right[0] + 1 - right[1]]
     
     
 
