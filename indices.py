@@ -54,7 +54,7 @@ def list_equivalent_elements():
                 #add appropriate entries to dictionaries
                 indices_elements.append(copy(element))
                 indices_elements_inv[_comp_tuple(element)] = count
-    #print(spins)
+   # print(spins)
     #print(indices_elements)
     
 
@@ -176,6 +176,8 @@ def setup_mapping_block(parallel=False):
         #     assert np.allclose(mapping_block[bi], mapping_block2[bi])
     print(mapping_block)
     print(elements_block)
+    for i in mapping_block:
+        print(len(i))
     
 
 def _index_to_element(index, ns= None):

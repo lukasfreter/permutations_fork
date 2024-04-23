@@ -160,6 +160,10 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
 
                     
                     #increment L
+                    if rhonj == 17:
+                        print('rhonj')
+                        print(f'left: {left[0]},{left[count_ns+1]}, right: {count_phot}, {count_s}')
+                        print(Hin)
                     L_line[0, rhonj] = L_line[0, rhonj] -1j * Hin
                     
                 #same for other part of commutator
@@ -174,6 +178,10 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     spinin = indices_elements_inv[get_equivalent_dm_tuple(concatenate((left[1:], n2_element[1:])))]
                     rhoin = (length//ldim_p)*left[0] +length//(ldim_p*ldim_p)*n2_element[0] + spinin
                    # print(f'Hnj={Hnj},spinin={spinin},rhoin={rhoin}')
+                    if rhoin == 17:
+                        print('rhoin')
+                        print(count_phot, count_s, count_ns)
+                        print(Hnj)
                     
                     L_line[0, rhoin] = L_line[0, rhoin] + 1j * Hnj
                     
@@ -335,6 +343,8 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
+            if count == 4:
+                print('kek')
             line = calculate_L_line(*arglist[idx]) # calculate the whole line of liouvillian for this element
             #line = csr_matrix([[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]])
             # first index: row. Since calculate_L_fixed returns a matrix, the row index must be chosen as 0
@@ -448,6 +458,8 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
+            if count == 4:
+                print('kek')
             line0, line1 = calculate_L_line_block(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
@@ -496,9 +508,9 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
         L1_line = []    
     
     # Calculate L0 elements -> in block nu_element
-    if nu_element == 1:
-        print(1)
+
     
+    # loop through all elements in the corrent block with same excitation, to build L0
     for count in range(len(mapping_block[nu_element])):
         idx = mapping_block[nu_element][count] # current index
         
@@ -519,21 +531,37 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
         
         left_to_couple = concatenate(([n_left], element_left))
         right_to_couple = concatenate(([n_right], element_right))
+
         
+        # Now that the coupled to element is determined, calculate the commutator part of L
         
-        if (left_to_couple == left).all() and (right_to_couple == right).all():
-            # this case is if an element couples to itself. Then both parts of the commutator matter.
-            Hin = get_element(H,[left[0], left[1]],[left[0], left[1]])
-            Hnj = get_element(H, [right[0], right[1]],[right[0], right[1]])
-            L0_line[0,count] = L0_line[0,count] -1j * Hin + 1j*Hnj
-            
-        elif (left_to_couple == left).all():
-            Hnj = get_element(H, [right_to_couple[0], right_to_couple[1]],[right[0], right[1]])
-            L0_line[0, count] = L0_line[0, count] + 1j * Hnj
+        for count_ns in range(nspins): # go through the spins one by one
+            # first check if the left/right elements match and calculate proper commutator parts
+            if (left_to_couple == left).all() and (right_to_couple == right).all():
+                # this case is if an element couples to itself. Then both parts of the commutator matter.
+                Hin = get_element(H,[left[0], left[1+count_ns]],[left[0], left[1+count_ns]])
+                Hnj = get_element(H, [right[0], right[1+count_ns]],[right[0], right[1+count_ns]])
+                L0_line[0,count] = L0_line[0,count] -1j * Hin + 1j*Hnj
                 
-        elif (right_to_couple == right).all():
-            Hin = get_element(H, [left[0], left[1]],[left_to_couple[0],left_to_couple[1]])
-            L0_line[0, count] = L0_line[0, count] -1j * Hin
+            elif (left_to_couple == left).all():
+                Hnj = get_element(H, [right_to_couple[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
+                L0_line[0, count] = L0_line[0, count] + 1j * Hnj
+                    
+            elif (right_to_couple == right).all():
+                Hin = get_element(H, [left[0], left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
+                L0_line[0, count] = L0_line[0, count] -1j * Hin
+            else:
+                # if there is no matching left or right parts, then try to permute them to equivalent elements
+                right_to_couple_perm = get_permutation_equivalent(left, left_to_couple, right_to_couple)
+                if len(right_to_couple_perm) != 0:
+                    Hnj = get_element(H, [right_to_couple_perm[0], right_to_couple_perm[1+count_ns]],[right[0], right[1+count_ns]])
+                    L0_line[0, count] = L0_line[0, count] + 1j * Hnj
+                else:
+                    left_to_couple_perm = get_permutation_equivalent(right, right_to_couple, left_to_couple)
+                    if len(left_to_couple_perm) != 0:
+                        Hin = get_element(H, [left[0], left[1+count_ns]],[left_to_couple_perm[0],left_to_couple_perm[1+count_ns]])
+                        L0_line[0, count] = L0_line[0, count] -1j * Hin
+                
             
     L0_line = csr_matrix(L0_line)
     return L0_line, L1_line
@@ -684,7 +712,65 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
     #return csr_matrix([1]),csr_matrix([1,2,3,4,5])
         
         
- 
+def get_permutation_equivalent(_basis, _permute, _output):
+    """left1 left2 right2 are spin indices"""
+    from numpy import array, where, copy, intersect1d, setdiff1d,concatenate
+    # try to find permutation such that left1 = left2
+    basis = _basis[1:]
+    permute = _permute[1:]
+    output = _output[1:]
+    if(sum(basis) != sum(permute)):
+        return []
+    else:
+        # check indices, where the arrays have ones
+        idx1 = where(basis == 1)[0]
+        idx2 = where(permute == 1)[0]
+        
+        # find common indices and remove them, because they are already in order
+        common_elements = intersect1d(idx1,idx2)
+        idx_ones1 = setdiff1d(idx1, common_elements)
+        idx_ones2 = setdiff1d(idx2, common_elements)
+        # now we know that we need to put the elements at index idx_ones2 from left2
+        # at the index idx_ones1. Then, both are the same.
+        cp_permute = copy(permute)
+        cp_output = copy(output)
+        for i in range(len(idx_ones1)):
+            cp_permute[idx_ones2[i]] = permute[idx_ones1[i]]
+            cp_permute[idx_ones1[i]] = permute[idx_ones2[i]]
+            
+            cp_output[idx_ones2[i]] = output[idx_ones1[i]]
+            cp_output[idx_ones1[i]] = output[idx_ones2[i]]
+            
+    return concatenate(([_output[0]],cp_output))
+
+
+def right_equivalent(right1, left2, right2):
+    """left1 left2 right1 right2 are spin indices"""
+    from numpy import array, where, copy, intersect1d, setdiff1d
+    # try to find permutation such that right1=right2
+    if(sum(right1) != sum(right2)):
+        return None
+    else:
+        # check indices, where the arrays have ones
+        idx1 = where(right1 == 1)[0]
+        idx2 = where(right2 == 1)[0]
+        
+        # find common indices and remove them, because they are already in order
+        common_elements = intersect1d(idx1,idx2)
+        idx_ones1 = setdiff1d(idx1, common_elements)
+        idx_ones2 = setdiff1d(idx2, common_elements)
+        # now we know that we need to put the elements at index idx_ones2 from left2
+        # at the index idx_ones1. Then, both are the same.
+        cp_left2 = copy(left2)
+        cp_right2 = copy(right2)
+        for i in range(len(idx_ones1)):
+            cp_left2[idx_ones2[i]] = left2[idx_ones1[i]]
+            cp_left2[idx_ones1[i]] = left2[idx_ones2[i]]
+            
+            cp_right2[idx_ones2[i]] = right2[idx_ones1[i]]
+            cp_right2[idx_ones1[i]] = right2[idx_ones2[i]]
+            
+    return cp_right2
     
     
 def setup_op(H, num_threads):

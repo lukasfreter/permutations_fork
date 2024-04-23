@@ -109,17 +109,18 @@ def setup_Dicke_block(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_threads
     # for c in range(len(c_ops)):
     #     c_ops[c] = csr_matrix(c_ops[c])
     # L0_new, L1_new = setup_L_block1(H,c_ops,num_threads,progress,parallel)
-    
+    # for c in range(len(c_ops)):
+    #     c_ops[c] = csr_matrix(c_ops[c])
+        
     # x1 = L0_old[1].todense()
     # x2 = L0_new[1].todense()
-    # print(x1)
-    # print(x2)
-    # x2[1,1]=10
-    
+       
     # import numpy as np
-    # assert np.allclose(x1,x2)
+    # for bi in range(len(L0_old)):
+    #     assert np.allclose(L0_old[bi].todense(), L0_new[bi].todense())
+        
 
-    return setup_L_block1(H, c_ops, num_threads, progress, parallel)
+    return setup_L_block(H, c_ops, num_threads, progress, parallel)
 
 
 
