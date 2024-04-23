@@ -31,8 +31,8 @@ w0 = 1#1.0
 wc = 1.5#0.65
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
-kappa = 1e-02
-gamma = 1e-03
+kappa = 0#1e-02
+gamma = 0#1e-03
 gamma_phi =3e-02
 
 
@@ -42,8 +42,10 @@ print(f'Number of spins {ntls}')
 print('BLOCK form')
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
 list_equivalent_elements() # create mapping to/from unique spin states
-setup_mapping_block()       # setup mapping between compressed density matrix and block form
+setup_mapping_block(parallel=False)       # setup mapping between compressed density matrix and block form
 setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
+sys.exit()
+
 # Initial state
 t0 = time()
 initial_block = setup_rho_block(basis(nphot,0),basis(2,0))

@@ -106,7 +106,7 @@ def mapping_task(args_tuple):
         el = concatenate(([count_p1], left, [count_p2],right))
         return (nu_left, element_index, el)
 
-def setup_mapping_block():
+def setup_mapping_block(parallel=False):
     """
     Generate mapping between reduced representation of density matrix and
     the block structure, which is grouped in different numbers of total excitations
@@ -129,52 +129,53 @@ def setup_mapping_block():
     mapping_block = [ [] for _ in range(nu_max+1)] # list of nu_max+1 empty lists
     mapping_block2 = [ [] for _ in range(nu_max+1)] # list of nu_max+1 empty lists
     elements_block = [ [] for _ in range(nu_max+1)]
-
-    from multiprocessing import Pool
-    from itertools import product
-
-    arglist = []
-    t0 = time()
-    for count_p1, count_p2, count in product(range(ldim_p), range(ldim_p), range(num_elements)):
-        arglist.append((count_p1, count_p2, count))
-
-    with Pool() as p:
-        results = p.map(mapping_task, arglist)
-
-    #for nu, element_index in results: # do we know how long block will be at each nu? 
-    for result in results:
-        if result is None:
-            continue
-        # try to avoid this?
-        mapping_block[result[0]].append(result[1])
-        elements_block[result[0]].append(result[2])
+    
+    if parallel:
+        from multiprocessing import Pool
+        from itertools import product
+    
+        arglist = []
+        t0 = time()
+        for count_p1, count_p2, count in product(range(ldim_p), range(ldim_p), range(num_elements)):
+            arglist.append((count_p1, count_p2, count))
+    
+        with Pool() as p:
+            results = p.map(mapping_task, arglist)
+    
+        #for nu, element_index in results: # do we know how long block will be at each nu? 
+        for result in results:
+            if result is None:
+                continue
+            # try to avoid this?
+            mapping_block[result[0]].append(result[1])
+            elements_block[result[0]].append(result[2])
         
+   # print('Parallel mapping block in {:.1f}s'.format(time()-t0)) 
+   # t0 = time()
+    else:
+        for count_p1 in range(ldim_p):
+            for count_p2 in range(ldim_p):
+                for count in range(num_elements):
+                    element = indices_elements[count]
+                    element_index = ldim_p*num_elements*count_p1 + num_elements*count_p2 + count
+                    left = element[0:nspins]
+                    right = element[nspins:2*nspins]
+                    
+                    # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
+                    m_left = nspins-sum(left)
+                    m_right = nspins-sum(right)
+                    # calculate nu
+                    nu_left = m_left + count_p1
+                    nu_right = m_right + count_p2
+                    if nu_left == nu_right and nu_left <= nu_max:                   
+                        el = concatenate(([count_p1], left, [count_p2],right))
+                        mapping_block[nu_left].append(element_index)
+                        elements_block[nu_left].append(el)
+        #print('Serial mapping block in {:.1f}s'.format(time()-t0)) 
+        # for bi in range(len(mapping_block)):
+        #     assert np.allclose(mapping_block[bi], mapping_block2[bi])
     print(mapping_block)
     print(elements_block)
-    #print('Parallel mapping block in {:.1f}s'.format(time()-t0)) 
-    #t0 = time()
-    # for count_p1 in range(ldim_p):
-    #     for count_p2 in range(ldim_p):
-    #         for count in range(num_elements):
-    #             element = indices_elements[count]
-    #             element_index = ldim_p*num_elements*count_p1 + num_elements*count_p2 + count
-    #             left = element[0:nspins]
-    #             right = element[nspins:2*nspins]
-                
-    #             # calculate excitations. Important: ZEOR MEANS SPIN UP, ONE MEANS SPIN DOWN.
-    #             m_left = nspins-sum(left)
-    #             m_right = nspins-sum(right)
-    #             # calculate nu
-    #             nu_left = m_left + count_p1
-    #             nu_right = m_right + count_p2
-    #             if nu_left == nu_right and nu_left <= nu_max:                   
-    #                 el = concatenate(([count_p1], left, [count_p2],right))
-    #                 mapping_block2[nu_left].append(element_index)
-    #                 elements_block[nu_left].append(el)
-    # print('Serial mapping block in {:.1f}s'.format(time()-t0)) 
-    # for bi in range(len(mapping_block)):
-    #     assert np.allclose(mapping_block[bi], mapping_block2[bi])
-    # print(elements_block)
     
 
 def _index_to_element(index, ns= None):
