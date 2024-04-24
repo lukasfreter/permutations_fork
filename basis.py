@@ -458,9 +458,9 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            if count == 4:
+            if count == 2:
                 print('kek')
-            line0, line1 = calculate_L_line_block(*arglist[idx]) # calculate the whole line of liouvillian for this element
+            line0, line1 = calculate_L_line_block1(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
         #     # calculate L1 part, that couples to nu+1 only if nu_max has not been reached
@@ -475,9 +475,157 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
         # if nu < num_blocks -1:
         #     L1.append(vstack(line_block_nup))
    # sys.exit()
-
-                   
     return L0,L1
+
+def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
+    """ Same as calculate_L_line, but only calculate block terms that are needed."""
+    
+    global nspins, ldim_s, ldim_p
+    from indices import indices_elements, indices_elements_inv, get_equivalent_dm_tuple, mapping_block, elements_block
+    from numpy import zeros, concatenate, copy, mod
+    from scipy.sparse import lil_matrix, csr_matrix
+    
+    tol = 1e-10
+    n_cops = len(c_ops)
+    num_blocks = len(mapping_block)
+    num_elements = len(indices_elements)
+    
+    # These are the density matrix indices for the element, of which we want
+    # to calculate the time derivative.
+    left = element[0:nspins+1]
+    right = element[nspins+1:2*nspins+2]
+    
+    # calculate nu from left (since left and right must have same excitation number, it does not matter if we choose left or right)
+    nu_element = left[0] + num_blocks - 1 - sum(left[1:]) #left[0] is number of photons
+    # setup L0 and L1 lines
+    L0_line = zeros((1, len(mapping_block[nu_element])), dtype = complex)
+    if nu_element < num_blocks-1:
+        L1_line = zeros((1,len(mapping_block[nu_element+1])), dtype=complex)
+    else:
+        L1_line = []    
+    
+    # Calculate L0 elements -> in block nu_element
+    # loop through all elements in the current block with same excitation, to build L0
+    for count in range(len(mapping_block[nu_element])):
+        idx = mapping_block[nu_element][count] # current index
+        
+        # from this index, get spin element, n_left and n_right. Formula: idx = (n_left*ldim_p + n_right)*len(indices_elements) + element_idx
+        element_idx = mod(idx,num_elements)
+        idx1 = int((idx-element_idx)/num_elements)
+        n_right = mod(idx1, ldim_p)
+        n_left = int((idx1 - n_right)/ldim_p)
+        
+        # elements which differ in photon number by 2 will never couple:
+        if abs(n_left - left[0]) > 1 or abs(n_right - right[0]) > 1:
+            continue
+        
+        # these are the density matrix indices of the element, which possibly contributes
+        # to the time derivative of the element labeled with "left" and "right" above.
+        element_left = indices_elements[element_idx][0:nspins]
+        element_right = indices_elements[element_idx][nspins:2*nspins]
+        
+        left_to_couple = concatenate(([n_left], element_left))
+        right_to_couple = concatenate(([n_right], element_right))
+        
+        # Now that the coupled to element is determined, calculate the commutator part of L
+        # d/dt rho_nmn'm' = -i (H_nmij rho_ijn'm' - rho_nmij H_ijn'm')
+        for count_ns in range(nspins): # go through the spins one by one
+            # First part of commutator: check if right_to_couple is compatible with right
+            if(states_compatible(right, right_to_couple)):
+                # calculate Hnmij, labelled as Hin
+                Hin = get_element(H,[left[0], left[1+count_ns]],[left_to_couple[0], left_to_couple[1+count_ns]])
+                deg = degeneracy_outer_invariant(left[1:], right[1:], left_to_couple[1:])
+                L0_line[0,count] = L0_line[0,count] - 1j*Hin*deg
+            
+            # second part of commutator
+            if(states_compatible(left, left_to_couple)):
+                # calculate H_ijn'm' labelled as Hnj
+                Hnj = get_element(H, [right_to_couple[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
+                deg = degeneracy_outer_invariant(left[1:], right[1:], right_to_couple[1:])
+                L0_line[0,count] = L0_line[0,count] + 1j*Hnj*deg
+                
+
+        
+        # for count_ns in range(nspins): # go through the spins one by one
+        #     # first check if the left/right elements match and calculate proper commutator parts
+        #     if (left_to_couple == left).all() and (right_to_couple == right).all():
+        #         # this case is if an element couples to itself. Then both parts of the commutator matter.
+        #         Hin = get_element(H,[left[0], left[1+count_ns]],[left[0], left[1+count_ns]])
+        #         Hnj = get_element(H, [right[0], right[1+count_ns]],[right[0], right[1+count_ns]])
+        #         L0_line[0,count] = L0_line[0,count] -1j * Hin + 1j*Hnj
+                
+        #     elif (left_to_couple == left).all():
+        #         # Left side matches: i.e. d/dt rho_ij = -i(Hin*rhonj - rhoin*Hnj) = -i(-rhoin*Hnj) because index i matches
+        #         # get all elements that contribute under permutation of the right index, that leave the element invariant.
+        #         Hnj = get_element(H, [right_to_couple[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
+        #         L0_line[0, count] = L0_line[0, count] + 1j * Hnj
+                    
+        #     elif (right_to_couple == right).all():
+        #         Hin = get_element(H, [left[0], left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
+        #         L0_line[0, count] = L0_line[0, count] -1j * Hin
+        #     else:
+        #         # if there is no matching left or right parts, then try to permute them to equivalent elements
+        #         right_to_couple_perm = get_permutation_equivalent(left, left_to_couple, right_to_couple)
+        #         if len(right_to_couple_perm) != 0:
+        #             Hnj = get_element(H, [right_to_couple_perm[0], right_to_couple_perm[1+count_ns]],[right[0], right[1+count_ns]])
+        #             L0_line[0, count] = L0_line[0, count] + 1j * Hnj
+        #         else:
+        #             left_to_couple_perm = get_permutation_equivalent(right, right_to_couple, left_to_couple)
+        #             if len(left_to_couple_perm) != 0:
+        #                 Hin = get_element(H, [left[0], left[1+count_ns]],[left_to_couple_perm[0],left_to_couple_perm[1+count_ns]])
+        #                 L0_line[0, count] = L0_line[0, count] -1j * Hin
+                
+            
+    L0_line = csr_matrix(L0_line)
+    return L0_line, L1_line
+
+def states_compatible(state1, state2):
+    """ checks, if state1 and state2 are equivalent up to permutation of spins"""
+    if state1[0] != state2[0]:
+        return False
+    
+    from numpy import where, setdiff1d, intersect1d
+    
+    spins1 = state1[1:]
+    spins2 = state2[1:]
+    if(sum(state1) != sum(state2)):
+        return False
+    
+    return True
+    # # check indices, where the arrays have ones
+    # idx1 = where(spins1 == 1)[0]
+    # idx2 = where(spins2 == 1)[0]
+    
+    # # find common indices and remove them, because they are already in order
+    # common_elements = intersect1d(idx1,idx2)
+    # idx_ones1 = setdiff1d(idx1, common_elements)
+    # idx_ones2 = setdiff1d(idx2, common_elements)
+            
+    # return [idx_ones1, idx_ones2]
+    
+def degeneracy_outer_invariant(outer1, outer2, inner):
+    """ calculate how many distinct permutations there are of the spins (outer1, inner)
+    and (inner, outer2), which leave outer1 and outer2 invariant. """
+    
+    from itertools import permutations
+    from numpy import array
+    perms = [inner]
+    for p in permutations(range(len(inner))):
+        inner_cp = array([inner[i] for i in p])
+        if(any(all(existing_list == inner_cp) for existing_list in perms)):
+            continue
+        
+        outer1_cp = array([outer1[i] for i in p])
+        outer2_cp = array([outer2[i] for i in p])
+        
+        print(outer1_cp, inner_cp, outer2_cp)
+        
+        if (all(outer1_cp == outer1) and all(outer2_cp == outer2)):
+            perms.append(inner_cp)
+
+    return len(perms)
+    
+    
 
 
 def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
@@ -531,6 +679,9 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
         
         left_to_couple = concatenate(([n_left], element_left))
         right_to_couple = concatenate(([n_right], element_right))
+        
+        if count == 3:
+            print(1)
 
         
         # Now that the coupled to element is determined, calculate the commutator part of L
@@ -541,24 +692,35 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
                 # this case is if an element couples to itself. Then both parts of the commutator matter.
                 Hin = get_element(H,[left[0], left[1+count_ns]],[left[0], left[1+count_ns]])
                 Hnj = get_element(H, [right[0], right[1+count_ns]],[right[0], right[1+count_ns]])
+                
+                # degin = degeneracy(copy(right[1:]), copy(left[1:]))
+                # degnj = degeneracy(copy(left[1:]), copy(right[1:])) 
+                
                 L0_line[0,count] = L0_line[0,count] -1j * Hin + 1j*Hnj
                 
             elif (left_to_couple == left).all():
+                # Left side matches: i.e. d/dt rho_ij = -i(Hin*rhonj - rhoin*Hnj) = -i(-rhoin*Hnj) because index i matches
+                # get all elements that contribute under permutation of the right index, that leave the element invariant.
+                # degnj = degeneracy(copy(left_to_couple[1:]), copy(right_to_couple[1:]))
+                
                 Hnj = get_element(H, [right_to_couple[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
                 L0_line[0, count] = L0_line[0, count] + 1j * Hnj
                     
             elif (right_to_couple == right).all():
+                # degin = degeneracy(copy(right_to_couple[1:]), copy(left_to_couple[1:]))
                 Hin = get_element(H, [left[0], left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
                 L0_line[0, count] = L0_line[0, count] -1j * Hin
             else:
                 # if there is no matching left or right parts, then try to permute them to equivalent elements
                 right_to_couple_perm = get_permutation_equivalent(left, left_to_couple, right_to_couple)
                 if len(right_to_couple_perm) != 0:
+                    # degnj = degeneracy(copy(left_to_couple[1:]), copy(right_to_couple[1:]))
                     Hnj = get_element(H, [right_to_couple_perm[0], right_to_couple_perm[1+count_ns]],[right[0], right[1+count_ns]])
                     L0_line[0, count] = L0_line[0, count] + 1j * Hnj
                 else:
                     left_to_couple_perm = get_permutation_equivalent(right, right_to_couple, left_to_couple)
                     if len(left_to_couple_perm) != 0:
+                        # degin = degeneracy(copy(right_to_couple[1:]), copy(left_to_couple[1:]))
                         Hin = get_element(H, [left[0], left[1+count_ns]],[left_to_couple_perm[0],left_to_couple_perm[1+count_ns]])
                         L0_line[0, count] = L0_line[0, count] -1j * Hin
                 
@@ -710,10 +872,48 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
 
     # L_line = csr_matrix(L_line)
     #return csr_matrix([1]),csr_matrix([1,2,3,4,5])
-        
+
+# def degeneracy(arr1, arr2):
+#     """ Find number of simultaneous permutations of arr1 and arr2, such that arr2
+#     stays invariant."""
+#     from itertools import permutations
+#     from numpy import concatenate, array
+#     perms = [arr2]
+#     for p in permutations(range(len(arr1))):
+#         arr1_cp = array([arr1[i] for i in p])
+#         arr2_cp = array([arr2[i] for i in p])
+#         if(any(all(existing_list == arr2_cp) for existing_list in perms)):
+#             continue
+#         perms.append(arr2_cp)
+#     print(arr1,arr2)
+#     print(perms)
+#     # return(len(perms))
+#     return 1
+    
+# def degeneracy1(arr1, arr2, left,right):
+#     """ Find number of simultaneous permutations of arr1 and arr2, such that arr2
+#     stays invariant AND left, right stay invariant"""
+#     from itertools import permutations
+#     from numpy import concatenate, array
+#     perms = [arr2]
+#     for p in permutations(range(len(arr1))):
+#         arr1_cp = array([arr1[i] for i in p])
+#         arr2_cp = array([arr2[i] for i in p])
+#         if(any(all(existing_list == arr2_cp) for existing_list in perms)):
+#             continue
+#         perms.append(arr2_cp)
+#     print(arr1,arr2)
+#     print(perms)
+#     return(len(perms))
+    
+    
         
 def get_permutation_equivalent(_basis, _permute, _output):
-    """left1 left2 right2 are spin indices"""
+    """_basis, _permute, _output are of the form [photon number, spin state] in 
+    the compressed form. This function swaps the spin indices of _permute, such
+    that they align exactly with the spin indices of _basis. The _output's spin
+    indices are swapped in the same fashion, such that the total matrix element of
+    _permute and _output stays invariant."""
     from numpy import array, where, copy, intersect1d, setdiff1d,concatenate
     # try to find permutation such that left1 = left2
     basis = _basis[1:]
@@ -743,34 +943,17 @@ def get_permutation_equivalent(_basis, _permute, _output):
             
     return concatenate(([_output[0]],cp_output))
 
-
-def right_equivalent(right1, left2, right2):
-    """left1 left2 right1 right2 are spin indices"""
-    from numpy import array, where, copy, intersect1d, setdiff1d
-    # try to find permutation such that right1=right2
-    if(sum(right1) != sum(right2)):
-        return None
-    else:
-        # check indices, where the arrays have ones
-        idx1 = where(right1 == 1)[0]
-        idx2 = where(right2 == 1)[0]
-        
-        # find common indices and remove them, because they are already in order
-        common_elements = intersect1d(idx1,idx2)
-        idx_ones1 = setdiff1d(idx1, common_elements)
-        idx_ones2 = setdiff1d(idx2, common_elements)
-        # now we know that we need to put the elements at index idx_ones2 from left2
-        # at the index idx_ones1. Then, both are the same.
-        cp_left2 = copy(left2)
-        cp_right2 = copy(right2)
-        for i in range(len(idx_ones1)):
-            cp_left2[idx_ones2[i]] = left2[idx_ones1[i]]
-            cp_left2[idx_ones1[i]] = left2[idx_ones2[i]]
-            
-            cp_right2[idx_ones2[i]] = right2[idx_ones1[i]]
-            cp_right2[idx_ones1[i]] = right2[idx_ones2[i]]
-            
-    return cp_right2
+def get_permutation_list(_invariant, _permute):
+    """_invariant, _permute are of the form [photon number, spin state] in 
+    the compressed form. This function lists all the possible permutations of 
+    the _permute spin indices, that necessarily leave the _invariant spin indices
+    invariant"""
+    invariant = _invariant[1:]
+    permute = _permute[1:]
+    
+    from sympy.utilities.iterables import multiset_permutations
+    
+    
     
     
 def setup_op(H, num_threads):
