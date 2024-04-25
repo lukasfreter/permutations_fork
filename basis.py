@@ -160,10 +160,6 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
 
                     
                     #increment L
-                    if rhonj == 17:
-                        print('rhonj')
-                        print(f'left: {left[0]},{left[count_ns+1]}, right: {count_phot}, {count_s}')
-                        print(Hin)
                     L_line[0, rhonj] = L_line[0, rhonj] -1j * Hin
                     
                 #same for other part of commutator
@@ -178,10 +174,6 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     spinin = indices_elements_inv[get_equivalent_dm_tuple(concatenate((left[1:], n2_element[1:])))]
                     rhoin = (length//ldim_p)*left[0] +length//(ldim_p*ldim_p)*n2_element[0] + spinin
                    # print(f'Hnj={Hnj},spinin={spinin},rhoin={rhoin}')
-                    if rhoin == 17:
-                        print('rhoin')
-                        print(count_phot, count_s, count_ns)
-                        print(Hnj)
                     
                     L_line[0, rhoin] = L_line[0, rhoin] + 1j * Hnj
                     
@@ -343,8 +335,8 @@ def setup_L_block(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            if count == 4:
-                print('kek')
+            # if count == 4:
+            #     print('kek')
             line = calculate_L_line(*arglist[idx]) # calculate the whole line of liouvillian for this element
             #line = csr_matrix([[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]])
             # first index: row. Since calculate_L_fixed returns a matrix, the row index must be chosen as 0
@@ -458,7 +450,7 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            if count == 2:
+            if count == 1 and nu==2:
                 print('kek')
             line0, line1 = calculate_L_line_block1(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
@@ -482,7 +474,7 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
     
     global nspins, ldim_s, ldim_p
     from indices import indices_elements, indices_elements_inv, get_equivalent_dm_tuple, mapping_block, elements_block
-    from numpy import zeros, concatenate, copy, mod
+    from numpy import zeros, concatenate, copy, mod, count_nonzero
     from scipy.sparse import lil_matrix, csr_matrix
     
     tol = 1e-10
@@ -529,18 +521,57 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         
         # Now that the coupled to element is determined, calculate the commutator part of L
         # d/dt rho_nmn'm' = -i (H_nmij rho_ijn'm' - rho_nmij H_ijn'm')
-        for count_ns in range(nspins): # go through the spins one by one
-            # First part of commutator: check if right_to_couple is compatible with right
-            if(states_compatible(right, right_to_couple)):
-                # calculate Hnmij, labelled as Hin
-                Hin = get_element(H,[left[0], left[1+count_ns]],[left_to_couple[0], left_to_couple[1+count_ns]])
-                deg = degeneracy_outer_invariant(left[1:], right[1:], left_to_couple[1:])
-                L0_line[0,count] = L0_line[0,count] - 1j*Hin*deg
+        # if count == 2:
+        #     print(1)
+        
+        # first check if left==right==left_to_couple==right_to_couple. Then the
+        # commutator necessarily vanishes.
+        if (left == right).all() and (left_to_couple == right_to_couple).all() and states_compatible(left,left_to_couple):
+            continue
+        
+        
+
+        # First part of commutator: check if right_to_couple is compatible with right
+        if(states_compatible(right, right_to_couple)):
+            # if they are compatible, permute left_to_couple appropriately for proper H element
+            left_to_couple_permute = copy(left_to_couple)
+            if not (right_to_couple == right).all():
+                left_to_couple_permute[1:] = permute_compatible(right[1:],right_to_couple[1:],left_to_couple[1:])
             
-            # second part of commutator
-            if(states_compatible(left, left_to_couple)):
+            # We assume a hamiltonian, that does not flip two spins simultaneously
+            # Hence, if more thant one spin-position differs in the left and
+            # right indices of H element, it must be zero. 
+            # I.e. <1, down,down,up| H | 0, up up down > = 0 
+            # But  <1, up,down,down| H | 0, up up down > != 0, because the first and second spin agree
+            spin_diff = count_nonzero(left[1:] != left_to_couple_permute[1:]) # number of different array elements
+            if spin_diff > 1:
+                continue
+            
+            for count_ns in range(nspins): # go through the spins one by one
+                # calculate Hnmij, labelled as Hin
+                Hin = get_element(H,[left[0], left[1+count_ns]],[left_to_couple_permute[0], left_to_couple_permute[1+count_ns]])
+                deg = degeneracy_outer_invariant(left[1:], right[1:], left_to_couple_permute[1:])
+                L0_line[0,count] = L0_line[0,count] - 1j*Hin*deg
+        
+        # second part of commutator
+        if(states_compatible(left, left_to_couple)):            
+            # if they are compatible, permute right_to_couple appropriately for proper H element
+            right_to_couple_permute = copy(right_to_couple)
+            if not (left_to_couple == left).all():
+                right_to_couple_permute[1:] = permute_compatible(left[1:],left_to_couple[1:],right_to_couple[1:])
+            
+            # We assume a hamiltonian, that does not flip two spins simultaneously
+            # Hence, if more thant one spin-position differs in the left and
+            # right indices of H element, it must be zero. 
+            # I.e. <1, down,down,up| H | 0, up up down > = 0 
+            # But  <1, up,down,down| H | 0, up up down > != 0, because the first and second spin agree
+            spin_diff = count_nonzero(right[1:] != right_to_couple_permute[1:])
+            if spin_diff > 1:
+                continue
+            
+            for count_ns in range(nspins): # go through the spins one by one
                 # calculate H_ijn'm' labelled as Hnj
-                Hnj = get_element(H, [right_to_couple[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
+                Hnj = get_element(H, [right_to_couple_permute[0], right_to_couple_permute[1+count_ns]],[right[0], right[1+count_ns]])
                 deg = degeneracy_outer_invariant(left[1:], right[1:], right_to_couple[1:])
                 L0_line[0,count] = L0_line[0,count] + 1j*Hnj*deg
                 
@@ -592,16 +623,29 @@ def states_compatible(state1, state2):
         return False
     
     return True
-    # # check indices, where the arrays have ones
-    # idx1 = where(spins1 == 1)[0]
-    # idx2 = where(spins2 == 1)[0]
+
+def permute_compatible(comp1, comp2, permute):
+    """comp1 and comp2 contain compatible (=equal up to permutation) spin states.
+    Find the permutation, that transforms comp2 in comp1 and perform the same
+    transformation to permute. This is important to calculate the proper H-element
+    in calc_L_line_block1."""
+    from numpy import where, setdiff1d, intersect1d, copy
     
-    # # find common indices and remove them, because they are already in order
-    # common_elements = intersect1d(idx1,idx2)
-    # idx_ones1 = setdiff1d(idx1, common_elements)
-    # idx_ones2 = setdiff1d(idx2, common_elements)
-            
-    # return [idx_ones1, idx_ones2]
+    # check indices, where the arrays have ones
+    idx1 = where(comp1 == 1)[0]
+    idx2 = where(comp2 == 1)[0]
+    
+    # find common indices and remove them, because they are already in order
+    common_elements = intersect1d(idx1,idx2)
+    idx_ones1 = setdiff1d(idx1, common_elements)
+    idx_ones2 = setdiff1d(idx2, common_elements)
+    
+    cp_permute = copy(permute)
+    for i in range(len(idx_ones1)):
+        cp_permute[idx_ones2[i]] = permute[idx_ones1[i]]
+        cp_permute[idx_ones1[i]] = permute[idx_ones2[i]]
+        
+    return cp_permute
     
 def degeneracy_outer_invariant(outer1, outer2, inner):
     """ calculate how many distinct permutations there are of the spins (outer1, inner)
@@ -618,7 +662,7 @@ def degeneracy_outer_invariant(outer1, outer2, inner):
         outer1_cp = array([outer1[i] for i in p])
         outer2_cp = array([outer2[i] for i in p])
         
-        print(outer1_cp, inner_cp, outer2_cp)
+        # print(outer1_cp, inner_cp, outer2_cp)
         
         if (all(outer1_cp == outer1) and all(outer2_cp == outer2)):
             perms.append(inner_cp)
