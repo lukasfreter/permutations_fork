@@ -17,12 +17,12 @@ from basis import setup_basis, setup_rho, setup_rho_block
 from indices import list_equivalent_elements, setup_mapping_block
 from operators import basis, tensor, destroy, create, qeye, sigmap, sigmam
 from models import setup_Dicke_block, setup_Dicke
-from propagate import time_evolve, time_evolve_block, time_evolve_block1
+from propagate import time_evolve, time_evolve_block, time_evolve_block1, time_evolve_block2
 from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =5#number 2LS
+ntls =3#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -44,7 +44,7 @@ setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-l
 list_equivalent_elements() # create mapping to/from unique spin states
 setup_mapping_block(parallel=False)       # setup mapping between compressed density matrix and block form
 setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
-
+sys.exit()
 
 # Initial state
 t0 = time()
