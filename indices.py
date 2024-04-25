@@ -174,8 +174,8 @@ def setup_mapping_block(parallel=False):
         #print('Serial mapping block in {:.1f}s'.format(time()-t0)) 
         # for bi in range(len(mapping_block)):
         #     assert np.allclose(mapping_block[bi], mapping_block2[bi])
-    print(mapping_block)
-    print(elements_block)
+    # print(mapping_block)
+    # print(elements_block)
     # for i in mapping_block:
         # print(len(i))
     

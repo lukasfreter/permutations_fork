@@ -528,8 +528,6 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         # commutator necessarily vanishes.
         if (left == right).all() and (left_to_couple == right_to_couple).all() and states_compatible(left,left_to_couple):
             continue
-        
-        
 
         # First part of commutator: check if right_to_couple is compatible with right
         if(states_compatible(right, right_to_couple)):
@@ -547,10 +545,10 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
             if spin_diff > 1:
                 continue
             
+            deg = degeneracy_outer_invariant_optimized(left[1:], right[1:], left_to_couple_permute[1:])
             for count_ns in range(nspins): # go through the spins one by one
                 # calculate Hnmij, labelled as Hin
                 Hin = get_element(H,[left[0], left[1+count_ns]],[left_to_couple_permute[0], left_to_couple_permute[1+count_ns]])
-                deg = degeneracy_outer_invariant(left[1:], right[1:], left_to_couple_permute[1:])
                 L0_line[0,count] = L0_line[0,count] - 1j*Hin*deg
         
         # second part of commutator
@@ -569,10 +567,10 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
             if spin_diff > 1:
                 continue
             
+            deg = degeneracy_outer_invariant_optimized(left[1:], right[1:], right_to_couple[1:])
             for count_ns in range(nspins): # go through the spins one by one
                 # calculate H_ijn'm' labelled as Hnj
                 Hnj = get_element(H, [right_to_couple_permute[0], right_to_couple_permute[1+count_ns]],[right[0], right[1+count_ns]])
-                deg = degeneracy_outer_invariant(left[1:], right[1:], right_to_couple[1:])
                 L0_line[0,count] = L0_line[0,count] + 1j*Hnj*deg
                 
 
@@ -668,6 +666,28 @@ def degeneracy_outer_invariant(outer1, outer2, inner):
             perms.append(inner_cp)
 
     return len(perms)
+
+
+def degeneracy_outer_invariant_optimized(outer1, outer2, inner):
+    """ calculate how many distinct permutations there are of the spins (outer1, inner)
+    and (inner, outer2), which leave outer1 and outer2 invariant. """
+    from math import factorial
+    from numpy import where
+    xi = outer1+ 2*outer2
+    deg = 1
+    for i in range(4):
+        l = where(xi==i)[0]
+        # print('loop',i)
+        # print(l)
+        if len(l) == 0:
+            continue
+        
+        sub_inner = inner[l]
+        s = sum(sub_inner)
+        factor =  factorial(len(l)) / (factorial(s)*factorial(len(l)-s))
+        deg = deg * factor
+        
+    return int(deg)
     
     
 
