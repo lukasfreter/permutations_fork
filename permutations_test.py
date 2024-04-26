@@ -54,13 +54,28 @@ def degeneracy_outer_invariant1(outer1, outer2, inner):
     return len(perms)
     
     
-    
+def degeneracy_permutation(left, right):
+    """ Calculate the degeneracy due to simultaneous permutation of left and 
+    right spin indices"""
+    from math import factorial
+    from numpy import where
+    xi = left + 2*right
+    deg = factorial(len(xi))
+    for i in range(4):
+        l = len(where(xi==i)[0])
+        deg = deg / factorial(l)
+        
+    return deg
 
 
+left = array([1,1,0])
+right = array([1,0,0])
+print(degeneracy_permutation(left, right))
 
-outer1 = array([1,1,1,0,0,0])
-outer2 = array([1,1,1,1,0,1])
-inner = array([0,1,0,0,1,1])
 
-degeneracy_outer_invariant(outer1, outer2, inner)
-print(degeneracy_outer_invariant1(outer1, outer2, inner))
+# outer1 = array([1,1,1,0,0,0])
+# outer2 = array([1,1,1,1,0,1])
+# inner = array([0,1,0,0,1,1])
+
+# degeneracy_outer_invariant(outer1, outer2, inner)
+# print(degeneracy_outer_invariant1(outer1, outer2, inner))
