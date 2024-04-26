@@ -22,18 +22,18 @@ from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =5#number 2LS
+ntls =3#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 
-w0 = 1.0
-wc = 1.5#0.65
-Omega = 0.4
+w0 = 0#1.0
+wc = 0#1.5#0.65
+Omega = 0#0.4
 g = Omega / np.sqrt(ntls)
-kappa = 1e-02
-gamma = 0#1e-03
-gamma_phi =3e-02
+kappa = 0#1e-02
+gamma = 0.1
+gamma_phi =0#3e-02
 
 
 ################# BLOCK STRUCTURE ####################################

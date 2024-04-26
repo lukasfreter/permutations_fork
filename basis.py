@@ -582,6 +582,7 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         #     print(1)
         if (left_to_couple == left).all() and (right_to_couple == right).all():
             for count_ns in range(nspins): # Optimization potential: I believe Xim and Xdagnj are always equal up to potentially a minus sign, which happens when left and right spins do not align
+                # MAybe rewrite to use c_ops_2 to minimize usage of get_element    
                 Xim = get_element(c_ops[0], [left[0],left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
                 Xdagnj = get_element(c_ops[0], [right_to_couple[0],right_to_couple[1+count_ns]],[right[0],right[1+count_ns]])
                 L0_line[0,count] = L0_line[0,count] + Xim*Xdagnj
@@ -608,6 +609,29 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
                 L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXmj*nspins
         
         # a rho adag term: moves out of block nu
+        
+        # repeat for L[sigma^-]. Similar to L[a], the last two terms keep total excitation number fixed
+        # Stored in c_ops[1]
+        # First term: -1/2*sigma^+sigma^-*rho. 
+        
+        # check if right states match
+        if (right_to_couple == right).all():
+            #check if left photons match
+            if left[0] == n_left:
+                for count_ns in range(nspins):
+                    XdagXmj = get_element(c_ops_2[1],[left[0],left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
+                    L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXmj
+                
+        # second term: -1/2*rho*sigma^+sigma^-. 
+        #check if whole left states match
+        if (left_to_couple == left).all():
+            # check if right photons match (need to stay the same)
+            if left[0] == n_left:
+                for count_ns in range(nspins):
+                    XdagXim = get_element(c_ops_2[1],[right_to_couple[0],right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
+                    L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXim
+                
+        
         
     if nu_element == num_blocks-1:
         L0_line = csr_matrix(L0_line)
@@ -646,12 +670,13 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
             Xdagnj = get_element(c_ops_dag[2], [right_to_couple[0],0],[right[0],0])
             L1_line[0, count] = L1_line[0,count] + Xim*Xdagnj*nspins
 
-            # if (left[0] == n_left and right[0] == n_right and left[0] == n_right):
-            #     # -1/2 * XdagX_im rho_mj
-            #     XdagXim = get_element(c_ops_2[2], [left[0],left[1]],[left[0],left[1]])
-            #     # -1/2 * rho_im XdagX_mj is the same, because adag*a is diagonal in the photon basis
-                
-            #     L1_line[0,count] = L1_line[0,count] - XdagXim
+        # L[sigma^-] contribution sigma^- * rho * sigma^+. changes spin excitation number. Stored in c_ops[1]
+        # Photons must remain the same
+        if (left[0] == n_left and right[0] == n_right):
+            for count_ns in range(nspins):
+                Xim = get_element(c_ops[1], [left[0], left[1+count_ns]],[left[0], left_to_couple[1+count_ns]])
+                Xdagnj = get_element(c_ops_dag[1], [right[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
+                L1_line[0,count] = L1_line[0,count] + Xim*Xdagnj
                 
             
     L0_line = csr_matrix(L0_line)

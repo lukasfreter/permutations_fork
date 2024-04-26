@@ -162,8 +162,8 @@ def setup_Dicke_block1(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_thread
     x2 = L0_new[1].todense()
     y1 = L0_old[2].todense()
     y2 = L0_new[2].todense()
-    # z1 = L0_old[3].todense()
-    # z2 = L0_new[3].todense()
+    # # z1 = L0_old[3].todense()
+    # # z2 = L0_new[3].todense()
     
     X1 = L1_old[0].todense()
     X2 = L1_new[0].todense()
