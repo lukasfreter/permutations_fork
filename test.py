@@ -42,7 +42,7 @@ print(f'Number of spins {ntls}')
 print('BLOCK form')
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
 list_equivalent_elements() # create mapping to/from unique spin states
-setup_mapping_block(parallel=False)       # setup mapping between compressed density matrix and block form
+setup_mapping_block(parallel=True)       # setup mapping between compressed density matrix and block form
 setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
 
 
@@ -51,7 +51,7 @@ t0 = time()
 initial_block = setup_rho_block(basis(nphot,0),basis(2,0))
 print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 #initial = setup_rho(basis(nphot, 0), basis(2,0)) # initial state in compressed representation, 0 photons, spin UP (N.B. TLS vs Pauli ordering of states)
-
+#sys.exit()
 t0=time()
 L0,L1 = setup_Dicke_block1(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)
 print('setup L block in {:.1f}s'.format(time()-t0), flush=True)

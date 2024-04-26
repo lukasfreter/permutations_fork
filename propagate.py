@@ -352,7 +352,7 @@ def time_evolve_block1(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rt
     
     dim_rho_compressed = ldim_p**2 * len(indices_elements)
     num_blocks = len(mapping_block)
-    print(num_blocks)
+    #print(num_blocks)
     t0 = 0
     ntimes = int(tend/dt)+1
     output= Results()

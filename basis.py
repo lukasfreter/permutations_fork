@@ -450,8 +450,8 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            if count == 1 and nu==2:
-                print('kek')
+            # if count == 1 and nu==2:
+            #     print('kek')
             line0, line1 = calculate_L_line_block1(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
@@ -744,8 +744,8 @@ def calculate_L_line_block(element, H, c_ops, c_ops_2, c_ops_dag, length):
         left_to_couple = concatenate(([n_left], element_left))
         right_to_couple = concatenate(([n_right], element_right))
         
-        if count == 3:
-            print(1)
+        # if count == 3:
+        #     print(1)
 
         
         # Now that the coupled to element is determined, calculate the commutator part of L
@@ -1146,16 +1146,26 @@ def setup_rho(rho_p, rho_s):
     return rho_vec
 
 
+
 def setup_rho_block(rho_p, rho_s):
     """ Same as 'setup_rho', but in block format, i.e. elements are grouped 
     according to their excitation number. To do this, use the mapping_block list
     """
     
     from indices import indices_elements, mapping_block
-    from numpy import zeros
+    from numpy import zeros, isclose, allclose
     
     num_elements = len(indices_elements)
     blocks = len(mapping_block)
+    
+    
+    if isclose(rho_p[0,0],1) and isclose(rho_s[0,0],1):
+        # This is the superfluoresence initial condition, i.e. zero photons and all spins up. 
+        # This is very easily initialized by all blocks zero, instead of the first entry of the last block
+        rho_vec_block1 = [zeros(len(i)) for i in mapping_block]
+        rho_vec_block1[blocks-1][0] = 1
+        return rho_vec_block1
+            
     
     rho_vec = zeros(ldim_p*ldim_p*num_elements, dtype = complex)    
     for count_p1 in range(ldim_p):
@@ -1174,6 +1184,9 @@ def setup_rho_block(rho_p, rho_s):
     for count in range(blocks):
         rho_vec_block.append(rho_vec[mapping_block[count]])
     #print(rho_vec_block)
+    
+    # for bi in range(len(mapping_block)):
+    #     assert allclose(rho_vec_block[bi], rho_vec_block1[bi])
     
     return rho_vec_block
     
