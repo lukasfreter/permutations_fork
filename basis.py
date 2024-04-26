@@ -178,6 +178,7 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     L_line[0, rhoin] = L_line[0, rhoin] + 1j * Hnj
                     
                 for count_cop in range(n_cops):
+                    
                         
                     #Do the same as above for each collapse operator
                     Xin = get_element(c_ops_2[count_cop], [left[0], left[count_ns+1]], [count_phot, count_s])
@@ -191,6 +192,7 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                             spinnj = indices_elements_inv[get_equivalent_dm_tuple(concatenate((n1_element[1:], right[1:])))]
                             rhonj = (length//ldim_p)*n1_element[0] +length//(ldim_p*ldim_p)*right[0] + spinnj
                             
+                            
                         L_line[0, rhonj] = L_line[0, rhonj] - 0.5*Xin
                         
                     Xnj = get_element(c_ops_2[count_cop], [count_phot, count_s], [right[0], right[count_ns+1]])
@@ -203,6 +205,7 @@ def calculate_L_line(element, H, c_ops, c_ops_2, c_ops_dag, length):
                     
                             spinin = indices_elements_inv[get_equivalent_dm_tuple(concatenate((left[1:], n2_element[1:])))]
                             rhoin = (length//ldim_p)*left[0] +length//(ldim_p*ldim_p)*n2_element[0] + spinin
+                            
                         L_line[0, rhoin] = L_line[0, rhoin] - 0.5*Xnj
                         
                     Xdagnj = get_element(c_ops_dag[count_cop], [count_phot, count_s], [right[0], right[count_ns+1]])
@@ -452,22 +455,21 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            # if count == 4:
-            #     print('kek')
+            if count == 7:
+                print('kek')
             line0, line1 = calculate_L_line_block1(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
         #     # calculate L1 part, that couples to nu+1 only if nu_max has not been reached
-        #     if nu < num_blocks-1:
-        #         next_block = len(mapping_block[nu+1])
-        #         line_block_nup.append(csr_matrix(line[[0]*next_block, mapping_block[nu+1]]))
-        #     if progress:
-        #         bar.update()
-        # # append block matrix to L0
+            if nu < num_blocks-1:
+                line_block_nup.append(line1)
+            if progress:
+                bar.update()
+        # append block matrix to L0
         L0.append(vstack(line_block_nu)) 
 
-        # if nu < num_blocks -1:
-        #     L1.append(vstack(line_block_nup))
+        if nu < num_blocks -1:
+             L1.append(vstack(line_block_nup))
    # sys.exit()
     return L0,L1
 
@@ -476,7 +478,7 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
     
     global nspins, ldim_s, ldim_p
     from indices import indices_elements, indices_elements_inv, get_equivalent_dm_tuple, mapping_block, elements_block
-    from numpy import zeros, concatenate, copy, mod, count_nonzero
+    from numpy import zeros, concatenate, copy, mod, count_nonzero,isclose
     from scipy.sparse import lil_matrix, csr_matrix
     
     tol = 1e-10
@@ -523,7 +525,6 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         
         # Now that the coupled to element is determined, calculate the commutator part of L
         # d/dt rho_nmn'm' = -i (H_nmij rho_ijn'm' - rho_nmij H_ijn'm')
-
         
         # first check if left==right==left_to_couple==right_to_couple. Then the
         # commutator necessarily vanishes.
@@ -569,8 +570,8 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
                         # calculate H_ijn'm' labelled as Hnj
                         Hnj = get_element(H, [right_to_couple_permute[0], right_to_couple_permute[1+count_ns]],[right[0], right[1+count_ns]])
                         L0_line[0,count] = L0_line[0,count] + 1j*Hnj*deg
-                
         
+                
         # Repeat for the collapse operators. Ordering: sigma_z, sigma^-, a
         # First: dephasing, sigma_z. This only couples to states with the same photons
         # in left and right states. Also, 
@@ -580,18 +581,81 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         # if count == 4:
         #     print(1)
         if (left_to_couple == left).all() and (right_to_couple == right).all():
-            for count_ns in range(nspins):
+            for count_ns in range(nspins): # Optimization potential: I believe Xim and Xdagnj are always equal up to potentially a minus sign, which happens when left and right spins do not align
                 Xim = get_element(c_ops[0], [left[0],left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
                 Xdagnj = get_element(c_ops[0], [right_to_couple[0],right_to_couple[1+count_ns]],[right[0],right[1+count_ns]])
                 L0_line[0,count] = L0_line[0,count] + Xim*Xdagnj
-        # if (left == left_to_couple).all() and (right == right_to_couple).all():
-            # in the case of sigma_z, there is coupling to the same element
+
             gamma_phi = c_ops_2[0][0,0]
             deg = degeneracy_permutation(left[1:], right[1:])
             L0_line[0,count] = L0_line[0,count] - gamma_phi*nspins
+            
+        # repeat for L[a] = a*rho*adag - 1/2adag*a*rho- 1/2rho*adag*a. The last two terms keep the excitation number, so they belong to L0
+        # Stored in c_ops[2]
+        if count == 8:
+            print(1)
+        if (left_to_couple == left).all():
+            # left indices match. Check if all right indices spins match:
+            if (right[1:] == right_to_couple[1:]).all():
+                XdagXim = get_element(c_ops_2[2], [right_to_couple[0],0],[right[0],0]) # -1/2 * XdagX_im rho_mj. Spin index in get_element does not matter, as long as it is the same on both sides
+                L0_line[0,count] = L0_line[0,count] - 1/2*XdagXim * nspins # multiply by nspins, because c_ops[2] is defined by dividing by nspins.
+            
+        if (right_to_couple == right).all():
+            # right indices match. Check if all left indices spins match:
+            if (left[1:] == left_to_couple[1:]).all():
+                XdagXmj = get_element(c_ops_2[2], [left[0],0],[left_to_couple[0],0])
+                # -1/2 * rho_im XdagX_mj 
+                L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXmj*nspins
+        
+        # a rho adag term: moves out of block nu
+        
+    if nu_element == num_blocks-1:
+        L0_line = csr_matrix(L0_line)
+        return L0_line, L1_line
+            
+            
+    # Now to the L1 part, that couples the current element in nu_element to nu_element + 1
+    
+    # loop through all nu_element+1 elements
+    for count in range(len(mapping_block[nu_element+1])):
+        idx = mapping_block[nu_element+1][count] # current index
+        
+        # from this index, get spin element, n_left and n_right. Formula: idx = (n_left*ldim_p + n_right)*len(indices_elements) + element_idx
+        element_idx = mod(idx,num_elements)
+        idx1 = int((idx-element_idx)/num_elements)
+        n_right = mod(idx1, ldim_p)
+        n_left = int((idx1 - n_right)/ldim_p)
+        
+        # elements which differ in photon number by 2 will never couple:
+        if abs(n_left - left[0]) > 1 or abs(n_right - right[0]) > 1:
+            continue
+        
+        # these are the density matrix indices of the element, which possibly contributes
+        # to the time derivative of the element labeled with "left" and "right" above.
+        element_left = indices_elements[element_idx][0:nspins]
+        element_right = indices_elements[element_idx][nspins:2*nspins]
+        
+        left_to_couple = concatenate(([n_left], element_left))
+        right_to_couple = concatenate(([n_right], element_right))
+        
+        # L[a] contribution a*rho*adag, changes photon number. Stored in c_ops[2]
+        # since spins remain the same, first check if spin states match
+        if (left[1:] == left_to_couple[1:]).all() and (right[1:]==right_to_couple[1:]).all():
+            # X_im * rho_mn * Xdag_nj
+            Xim = get_element(c_ops[2], [left[0],0],[left_to_couple[0],0])
+            Xdagnj = get_element(c_ops_dag[2], [right_to_couple[0],0],[right[0],0])
+            L1_line[0, count] = L1_line[0,count] + Xim*Xdagnj*nspins
+
+            # if (left[0] == n_left and right[0] == n_right and left[0] == n_right):
+            #     # -1/2 * XdagX_im rho_mj
+            #     XdagXim = get_element(c_ops_2[2], [left[0],left[1]],[left[0],left[1]])
+            #     # -1/2 * rho_im XdagX_mj is the same, because adag*a is diagonal in the photon basis
+                
+            #     L1_line[0,count] = L1_line[0,count] - XdagXim
                 
             
     L0_line = csr_matrix(L0_line)
+    L1_line = csr_matrix(L1_line)
     return L0_line, L1_line
 
 def states_compatible(state1, state2):
