@@ -55,6 +55,7 @@ print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 t0=time()
 L0,L1 = setup_Dicke_block1(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)
 print('setup L block in {:.1f}s'.format(time()-t0), flush=True)
+sys.exit()
 
 n = tensor(create(nphot)*destroy(nphot), qeye(2))
 p = tensor(qeye(nphot), sigmap()*sigmam())

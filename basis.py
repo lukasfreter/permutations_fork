@@ -697,12 +697,19 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
             # we have to compute matrix elements of sigma^- and sigma^+. Therefore, check first if 
             # number of spin up in "right" and "right_to_couple" as well as "left" and "left_to_coupole" vary by one
             if (sum(left[1:]) - sum(left_to_couple[1:]) == 1) and (sum(right[1:]) - sum(right_to_couple[1:]) == 1):       
+                
+                Oc = left[1:] + 2*right[1:]
+                Ic = left_to_couple[1:] + 2*right_to_couple[1:]
    
                 # Get the number of permutations, that contribute
                 deg = degeneracy_gamma_changing_block(left[1:], right[1:], left_to_couple[1:], right_to_couple[1:]) #FIND A MORE EFFICIENT METHOD
                 Xim = get_element(c_ops[1], [0, 1],[0, 0]) # nonzero element: equal photon numbers and spin transition from up to down
                 Xdagnj = get_element(c_ops_dag[1], [0, 0],[0, 1]) # nonzero element: equal photon number as spin transition from down to up
                 L1_line[0,count] = L1_line[0,count] + Xim*Xdagnj*deg
+                
+                print(Oc)
+                print(Ic)
+                print(deg, '\n')
                 
                 
             
