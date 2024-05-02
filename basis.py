@@ -455,8 +455,8 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            if nu==1:
-                print('kek')
+            # if nu==1:
+            #     print('kek')
             line0, line1 = calculate_L_line_block1(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
@@ -602,8 +602,8 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
             
         # repeat for L[a] = a*rho*adag - 1/2adag*a*rho- 1/2rho*adag*a. The last two terms keep the excitation number, so they belong to L0
         # Stored in c_ops[2]
-        if count == 8:
-            print(1)
+        # if count == 8:
+        #     print(1)
         if (left_to_couple == left).all():
             # left indices match. Check if all right indices spins match:
             if (right[1:] == right_to_couple[1:]).all():
@@ -696,32 +696,14 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         if (left[0] == n_left and right[0] == n_right):
             # we have to compute matrix elements of sigma^- and sigma^+. Therefore, check first if 
             # number of spin up in "right" and "right_to_couple" as well as "left" and "left_to_coupole" vary by one
-            if (sum(left[1:]) - sum(left_to_couple[1:]) == 1) and (sum(right[1:]) - sum(right_to_couple[1:]) == 1):
-                # permute left_to_couple and right_to_couple spin indices in such a way, that matrix element
-                # of sigma^- is nonzero. Align zeros, because there is one less zero in left_to_couple than left
-                left_to_couple_perm, right_to_couple_perm = align_zeros(left[1:],left_to_couple[1:],right_to_couple[1:])
-                
-                # to the same for matrix element of sigma^+. Here, we need the permuted left_to_couple
-                # Align ones, because there is one less one in right_to_couple than right.
-                #left_to_couple_perm = align_ones(right[1:], left_to_couple[1:], right_to_couple[1:])
-                
-                # Now check if right_to_couple_perm and left_to_couple_perm are compatible with
-                # right_to_couple and left_to_couple
-                xi1 = 2*element_left + element_right # xi of element to couple
-                xi2 = 2*left_to_couple_perm + right_to_couple_perm # xi of permuted element to couple
-                # check if x11 is permutation of xi2
-                if not isPermutation(xi1,xi2):
-                    continue
-                
-                # for count_ns in range(nspins):
-                #     Xim = get_element(c_ops[1], [left[0], left[1+count_ns]],[left[0], left_to_couple[1+count_ns]])
-                #     Xdagnj = get_element(c_ops_dag[1], [right[0], right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
-                #     L1_line[0,count] = L1_line[0,count] + Xim*Xdagnj*deg
-                deg = degeneracy_outer_invariant_inner2(left[1:], right[1:], left_to_couple[1:],right_to_couple[1:])
-
+            if (sum(left[1:]) - sum(left_to_couple[1:]) == 1) and (sum(right[1:]) - sum(right_to_couple[1:]) == 1):       
+   
+                # Get the number of permutations, that contribute
+                deg = degeneracy_gamma_changing_block(left[1:], right[1:], left_to_couple[1:], right_to_couple[1:]) #FIND A MORE EFFICIENT METHOD
                 Xim = get_element(c_ops[1], [0, 1],[0, 0]) # nonzero element: equal photon numbers and spin transition from up to down
                 Xdagnj = get_element(c_ops_dag[1], [0, 0],[0, 1]) # nonzero element: equal photon number as spin transition from down to up
                 L1_line[0,count] = L1_line[0,count] + Xim*Xdagnj*deg
+                
                 
             
     L0_line = csr_matrix(L0_line)
@@ -731,32 +713,59 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
 
 
 
-def isPermutation(A, B):
-    """
-    Computes if A and B are permutations of each other.
-    This implementation correctly handles duplicate elements. Taken from
-    https://stackoverflow.com/questions/10003929/how-to-tell-if-two-arrays-are-permutations-of-each-other-without-the-ability-to
-    """
-    # make sure the lists are of equal length
-    if len(A) != len(B):
-        return False
+# def isPermutation(A, B):
+#     """
+#     Computes if A and B are permutations of each other.
+#     This implementation correctly handles duplicate elements. Taken from
+#     https://stackoverflow.com/questions/10003929/how-to-tell-if-two-arrays-are-permutations-of-each-other-without-the-ability-to
+#     """
+#     # make sure the lists are of equal length
+#     if len(A) != len(B):
+#         return False
 
-    # keep track of how many times each element occurs.
-    counts = {}
-    for a in A:
-        if a in counts: counts[a] = counts[a] + 1
-        else: counts[a] = 1
+#     # keep track of how many times each element occurs.
+#     counts = {}
+#     for a in A:
+#         if a in counts: counts[a] = counts[a] + 1
+#         else: counts[a] = 1
 
-    # if some element in B occurs too many times, not a permutation
-    for b in B:
-        if b in counts:
-            if counts[b] == 0: return False
-            else: counts[b] = counts[b] - 1
-        else: return False
+#     # if some element in B occurs too many times, not a permutation
+#     for b in B:
+#         if b in counts:
+#             if counts[b] == 0: return False
+#             else: counts[b] = counts[b] - 1
+#         else: return False
 
-    # None of the elements in B were found too many times, and the lists are
-    # the same length, they are a permutation
-    return True
+#     # None of the elements in B were found too many times, and the lists are
+#     # the same length, they are a permutation
+#     return True
+
+
+def degeneracy_gamma_changing_block(outer1, outer2, inner1, inner2):
+    """Find simultaneous permutation of inner1 and inner2, such that all but one
+    spin index align, and in exactly the same positions. This is necessary
+    for calculating the Lindblad operator of sigma minus. """
+    from itertools import permutations
+    from numpy import array, concatenate, where, not_equal
+    
+    if sum(outer1) - sum(inner1) != 1 or sum(outer2) - sum(inner2) != 1:
+        return -1
+    perms = []
+    for p in permutations(range(len(inner1))):
+        inner1_cp = array([inner1[i] for i in p])
+        inner2_cp = array([inner2[i] for i in p])
+        if(any(all(existing_list == concatenate((inner1_cp, inner2_cp))) for existing_list in perms)):
+            continue
+        
+        # check, where they align
+        notequal1 = where(not_equal(inner1_cp, outer1))[0]
+        notequal2 = where(not_equal(inner2_cp, outer2))[0]
+        
+        if len(notequal1) == 1 and len(notequal2) == 1:
+            if notequal1[0] == notequal2[0]:
+                perms.append(concatenate((inner1_cp, inner2_cp)))
+
+    return len(perms)
 
 
 def align_zeros(left, left_to_couple, right_to_couple):

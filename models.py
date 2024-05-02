@@ -151,36 +151,36 @@ def setup_Dicke_block1(omega,omega0, U, g, gp, kappa, gam_phi, gam_dn,num_thread
     c_ops.append(sqrt(gam_dn)*tensor(qeye(ldim_p), sigmam()))
     c_ops.append(sqrt(kappa/nspins)*tensor(destroy(ldim_p), qeye(ldim_s)))
     
-    L0_old, L1_old= setup_L_block(H,c_ops,num_threads, progress,parallel)
-    for c in range(len(c_ops)):
-        c_ops[c] = csr_matrix(c_ops[c])
-    L0_new, L1_new = setup_L_block1(H,c_ops,num_threads,progress,parallel)
-    for c in range(len(c_ops)):
-        c_ops[c] = csr_matrix(c_ops[c])
+    # L0_old, L1_old= setup_L_block(H,c_ops,num_threads, progress,parallel)
+    # for c in range(len(c_ops)):
+    #     c_ops[c] = csr_matrix(c_ops[c])
+    # L0_new, L1_new = setup_L_block1(H,c_ops,num_threads,progress,parallel)
+    # for c in range(len(c_ops)):
+    #     c_ops[c] = csr_matrix(c_ops[c])
         
-    x1 = L0_old[1].todense()
-    x2 = L0_new[1].todense()
-    y1 = L0_old[2].todense()
-    y2 = L0_new[2].todense()
-    z1 = L0_old[3].todense()
-    z2 = L0_new[3].todense()
+    # x1 = L0_old[1].todense()
+    # x2 = L0_new[1].todense()
+    # y1 = L0_old[2].todense()
+    # y2 = L0_new[2].todense()
+    # z1 = L0_old[3].todense()
+    # z2 = L0_new[3].todense()
     
-    X1 = L1_old[0].todense()
-    X2 = L1_new[0].todense()
-    Y1 = L1_old[1].todense()
-    Y2 = L1_new[1].todense()
-    Z1 = L1_old[2].todense()
-    Z2 = L1_new[2].todense()
+    # X1 = L1_old[0].todense()
+    # X2 = L1_new[0].todense()
+    # Y1 = L1_old[1].todense()
+    # Y2 = L1_new[1].todense()
+    # Z1 = L1_old[2].todense()
+    # Z2 = L1_new[2].todense()
        
-    import numpy as np
-    for bi in range(len(L0_old)):
-        print('L0 block',bi)
-        assert np.allclose(L0_old[bi].todense(), L0_new[bi].todense())
+    # import numpy as np
+    # for bi in range(len(L0_old)):
+    #     print('L0 block',bi)
+    #     assert np.allclose(L0_old[bi].todense(), L0_new[bi].todense())
     
     
-    for bi in range(len(L1_old)):
-        print('L1 block',bi)
-        assert np.allclose(L1_old[bi].todense(), L1_new[bi].todense()) 
+    # for bi in range(len(L1_old)):
+    #     print('L1 block',bi)
+    #     assert np.allclose(L1_old[bi].todense(), L1_new[bi].todense()) 
     
 
     return setup_L_block1(H, c_ops, num_threads, progress, parallel)

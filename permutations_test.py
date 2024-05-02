@@ -116,20 +116,42 @@ def align_ones(left, right):
 
     return 0
 
-# Example usage
-left = array([0, 1, 0, 0, 1])
-right = array([1, 1, 0, 1, 0])
-
-x = align_ones(left,right)
 
 
+def degeneracy_gamma_changing_block(outer1, outer2, inner1, inner2):
+    """Find simultaneous permutation of inner1 and inner2, such that all but one
+    spin index align, and in exactly the same positions"""
+    from itertools import permutations
+    from numpy import array, concatenate, where, not_equal
+    
+    if sum(outer1) - sum(inner1) != 1 or sum(outer2) - sum(inner2) != 1:
+        return -1
+    perms = []
+    for p in permutations(range(len(inner1))):
+        inner1_cp = array([inner1[i] for i in p])
+        inner2_cp = array([inner2[i] for i in p])
+        if(any(all(existing_list == concatenate((inner1_cp, inner2_cp))) for existing_list in perms)):
+            continue
+        
+        # check, where they align
+        notequal1 = where(not_equal(inner1_cp, outer1))[0]
+        notequal2 = where(not_equal(inner2_cp, outer2))[0]
+        
+        if len(notequal1) == 1 and len(notequal2) == 1:
+            if notequal1[0] == notequal2[0]:
+                perms.append(concatenate((inner1_cp, inner2_cp)))
+
+    return len(perms)
 
 
 
-# outer1 = array([1,1,1])
-# outer2 = array([1,1,1])
-# inner1 = array([1,1,0])
-# inner2 = array([1,1,0])
+outer1 = array([1,1])
+outer2 = array([1,1])
+inner1 = array([1,0])
+inner2 = array([1,0])
+
+
+print(degeneracy_gamma_changing_block(outer1, outer2, inner1, inner2))
 
 # print(degeneracy_outer_invariant_inner2(outer1, outer2, inner1, inner2))
 
