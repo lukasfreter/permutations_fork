@@ -605,15 +605,17 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         # if count == 4:
         #     print(1)
         if (left_to_couple == left).all() and (right_to_couple == right).all():
-            for count_ns in range(nspins): # Optimization potential: I believe Xim and Xdagnj are always equal up to potentially a minus sign, which happens when left and right spins do not align
-                # MAybe rewrite to use c_ops_2 to minimize usage of get_element    
-                Xim = get_element(c_ops[0], [left[0],left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
-                Xdagnj = get_element(c_ops[0], [right_to_couple[0],right_to_couple[1+count_ns]],[right[0],right[1+count_ns]])
-                L0_line[0,count] = L0_line[0,count] + Xim*Xdagnj
-
+            # for count_ns in range(nspins): # Optimization potential: I believe Xim and Xdagnj are always equal up to potentially a minus sign, which happens when left and right spins do not align
+            #     # MAybe rewrite to use c_ops_2 to minimize usage of get_element    
+            #     Xim = get_element(c_ops[0], [left[0],left[1+count_ns]],[left_to_couple[0],left_to_couple[1+count_ns]])
+            #     Xdagnj = get_element(c_ops[0], [right_to_couple[0],right_to_couple[1+count_ns]],[right[0],right[1+count_ns]])
+            #     L0_line[0,count] = L0_line[0,count] + Xim*Xdagnj
+            
             gamma_phi = c_ops_2[0][0,0]
-           # deg = degeneracy_permutation(left[1:], right[1:])
-            L0_line[0,count] = L0_line[0,count] - gamma_phi*nspins
+            #L0_line[0,count] = L0_line[0,count] - gamma_phi*nspins
+            x = (left[1:] == right[1:]).sum()
+            L0_line[0,count] = L0_line[0,count] + 2*gamma_phi*(x-nspins)
+            
             
         # repeat for L[a] = a*rho*adag - 1/2adag*a*rho- 1/2rho*adag*a. The last two terms keep the excitation number, so they belong to L0
         # Stored in c_ops[2]
@@ -713,6 +715,8 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         
         # L[a] contribution a*rho*adag, changes photon number. Stored in c_ops[2]
         # since spins remain the same, first check if spin states match
+        # if spins match, then the element can couple, because we are looping through the block nu+1. Therefore
+        # the coupled-to-elements necessarily have one more excitation, which for this case is in the photon state.
         if (left[1:] == left_to_couple[1:]).all() and (right[1:]==right_to_couple[1:]).all():
             # X_im * rho_mn * Xdag_nj
             Xim = get_element(c_ops[2], [left[0],0],[left_to_couple[0],0])

@@ -22,18 +22,18 @@ from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =10#number 2LS
+ntls =15#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 
-w0 = 0#1.0
-wc = 0#0.65
-Omega = 0#0.4
+w0 = 1.0
+wc = 0.65
+Omega = 0.4
 g = Omega / np.sqrt(ntls)
 kappa = 1e-02
-gamma =0# 0.1
-gamma_phi = 0#3e-02
+gamma = 0.1
+gamma_phi = 3e-02
 
 
 ################# BLOCK STRUCTURE ####################################
@@ -55,7 +55,7 @@ print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 t0=time()
 L0,L1 = setup_Dicke_block1(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)
 print('setup L block in {:.1f}s'.format(time()-t0), flush=True)
-sys.exit()
+#sys.exit()
 
 n = tensor(create(nphot)*destroy(nphot), qeye(2))
 p = tensor(qeye(nphot), sigmap()*sigmam())
@@ -152,6 +152,19 @@ axes[1].set_ylabel(r'$\langle \sigma^+\sigma^-\rangle$')
 plt.legend()
 #fig.savefig('figures/example_block.png',dpi=300, bbox_inches='tight')
 plt.show()
+
+
+
+# # get relative deviation
+# dev_n = (ns - ns_block) / ns
+# dev_ps = (ps - ps_block) / ps
+# fig, axes = plt.subplots(1, figsize=(6,3))
+# axes.set_xlabel(r'$t$')
+# axes.plot(ts_block, dev_n,label='rel. deviation n')
+# axes.plot(ts_block, dev_ps, label = 'rel. deviation exc. number')
+# plt.legend()
+# #fig.savefig('figures/example_block.png',dpi=300, bbox_inches='tight')
+# plt.show()
 
 
 
