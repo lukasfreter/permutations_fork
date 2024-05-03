@@ -487,13 +487,16 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
     # right_to_couple = array([0,1,0])
     # left_to_couple = array([0,1,2])
     # align_ones(right, left_to_couple,right_to_couple)
-    
         
     
     tol = 1e-10
     n_cops = len(c_ops)
     num_blocks = len(mapping_block)
     num_elements = len(indices_elements)
+    
+    #---------------------------
+    # get elements
+    #---------------------------
     
     # These are the density matrix indices for the element, of which we want
     # to calculate the time derivative.
@@ -507,9 +510,12 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
     if nu_element < num_blocks-1:
         L1_line = zeros((1,len(mapping_block[nu_element+1])), dtype=complex)
     else:
-        L1_line = []    
-    
+        L1_line = []
+        
+    #------------------------------------------------
     # Calculate L0 elements -> in block nu_element
+    #------------------------------------------------
+    
     # loop through all elements in the current block with same excitation, to build L0
     for count in range(len(mapping_block[nu_element])):
         idx = mapping_block[nu_element][count] # current index
@@ -532,17 +538,26 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         left_to_couple = concatenate(([n_left], element_left))
         right_to_couple = concatenate(([n_right], element_right))
         
+        #------------------------------------------------------------------------------------
         # Now that the coupled to element is determined, calculate the commutator part of L
         # d/dt rho_nmn'm' = -i (H_nmij rho_ijn'm' - rho_nmij H_ijn'm')
+        #------------------------------------------------------------------------------------
+        
         
         # first check if left==right==left_to_couple==right_to_couple. Then the
         # commutator necessarily vanishes.
-        if not((left == right).all() and (left_to_couple == right_to_couple).all() and states_compatible(left,left_to_couple)):
+        # if ((left == right).all() and (left_to_couple == right_to_couple).all() and states_compatible(left,left_to_couple)):
+        #     print(left,right)
+        #     print(left_to_couple, right_to_couple)
+        #     print(1)
+        
+        if not((left == right).all() and (left_to_couple == right_to_couple).all()): #and states_compatible(left,left_to_couple)):
             # First part of commutator: check if right_to_couple is compatible with right
             if(states_compatible(right, right_to_couple)):
                 # if they are compatible, permute left_to_couple appropriately for proper H element
                 left_to_couple_permute = copy(left_to_couple)
                 if not (right_to_couple == right).all():
+                    # if they are compatible but not equal, we need to permute left_to_couple appropriately, to get correct matrix element of H
                     left_to_couple_permute[1:] = permute_compatible(right[1:],right_to_couple[1:],left_to_couple[1:])
                 
                 # We assume a hamiltonian, that does not flip two spins simultaneously
@@ -597,25 +612,33 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
                 L0_line[0,count] = L0_line[0,count] + Xim*Xdagnj
 
             gamma_phi = c_ops_2[0][0,0]
-            deg = degeneracy_permutation(left[1:], right[1:])
+           # deg = degeneracy_permutation(left[1:], right[1:])
             L0_line[0,count] = L0_line[0,count] - gamma_phi*nspins
             
         # repeat for L[a] = a*rho*adag - 1/2adag*a*rho- 1/2rho*adag*a. The last two terms keep the excitation number, so they belong to L0
         # Stored in c_ops[2]
         # if count == 8:
         #     print(1)
-        if (left_to_couple == left).all():
-            # left indices match. Check if all right indices spins match:
-            if (right[1:] == right_to_couple[1:]).all():
-                XdagXim = get_element(c_ops_2[2], [right_to_couple[0],0],[right[0],0]) # -1/2 * XdagX_im rho_mj. Spin index in get_element does not matter, as long as it is the same on both sides
-                L0_line[0,count] = L0_line[0,count] - 1/2*XdagXim * nspins # multiply by nspins, because c_ops[2] is defined by dividing by nspins.
+        # if (left_to_couple == left).all():
+        #     # left indices match. Check if all right indices spins match:
+        #     if (right[1:] == right_to_couple[1:]).all():
+        #         XdagXim = get_element(c_ops_2[2], [right_to_couple[0],0],[right[0],0]) # -1/2 * XdagX_im rho_mj. Spin index in get_element does not matter, as long as it is the same on both sides
+        #         L0_line[0,count] = L0_line[0,count] - 1/2*XdagXim * nspins # multiply by nspins, because c_ops[2] is defined by dividing by nspins.
             
-        if (right_to_couple == right).all():
-            # right indices match. Check if all left indices spins match:
-            if (left[1:] == left_to_couple[1:]).all():
-                XdagXmj = get_element(c_ops_2[2], [left[0],0],[left_to_couple[0],0])
-                # -1/2 * rho_im XdagX_mj 
-                L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXmj*nspins
+        # if (right_to_couple == right).all():
+        #     # right indices match. Check if all left indices spins match:
+        #     if (left[1:] == left_to_couple[1:]).all():
+        #         XdagXmj = get_element(c_ops_2[2], [left[0],0],[left_to_couple[0],0])
+        #         # -1/2 * rho_im XdagX_mj 
+        #         L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXmj*nspins
+        
+        # ----------------------------
+        # nu conserving part of L[a]
+        #-----------------------------
+        if (left_to_couple == left).all() and (right_to_couple == right).all():
+            XdagXmj = get_element(c_ops_2[2], [left[0],0],[left_to_couple[0],0])
+            XdagXim = get_element(c_ops_2[2], [right_to_couple[0],0],[right[0],0])
+            L0_line[0,count] = L0_line[0,count] -  1/2*XdagXmj*nspins - 1/2*XdagXim*nspins # multiply by nspins, because c_ops[2] is defined by dividing by nspins.
         
         # a rho adag term: moves out of block nu
         
@@ -645,6 +668,9 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         #                 XdagXim = get_element(c_ops_2[1],[right_to_couple[0],right_to_couple[1+count_ns]],[right[0], right[1+count_ns]])
         #                 L0_line[0,count] = L0_line[0,count] - 1/2 * XdagXim
              
+        #------------------------------------
+        # nu conserving part of L[sigma minus]
+        #------------------------------------
         # MORE EFFICIENT ATTEMPT: make use of the fact that all spin indices contribute only, if left and right spin states in sigma^+sigma^- are both up
         # also make use of the fact that sigma^+sigma^- is diagonal, so the two terms rho*sigma^+sigma^- and sigma^+sigma^-*rho are equal
         if (right_to_couple == right).all() and (left_to_couple == left).all():
@@ -658,8 +684,9 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         L0_line = csr_matrix(L0_line)
         return L0_line, L1_line
             
-            
+    #-----------------------------------------------------------------------------------------
     # Now to the L1 part, that couples the current element in nu_element to nu_element + 1
+    #-----------------------------------------------------------------------------------------
     
     # loop through all nu_element+1 elements
     for count in range(len(mapping_block[nu_element+1])):
@@ -683,6 +710,7 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
         left_to_couple = concatenate(([n_left], element_left))
         right_to_couple = concatenate(([n_right], element_right))
         
+        
         # L[a] contribution a*rho*adag, changes photon number. Stored in c_ops[2]
         # since spins remain the same, first check if spin states match
         if (left[1:] == left_to_couple[1:]).all() and (right[1:]==right_to_couple[1:]).all():
@@ -704,6 +732,7 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
                 Xim = get_element(c_ops[1], [0, 1],[0, 0]) # nonzero element: equal photon numbers and spin transition from up to down
                 Xdagnj = get_element(c_ops_dag[1], [0, 0],[0, 1]) # nonzero element: equal photon number as spin transition from down to up
                 L1_line[0,count] = L1_line[0,count] + Xim*Xdagnj*deg
+                #print(deg,'\n')
                 
                     
             
@@ -779,6 +808,9 @@ def degeneracy_gamma_changing_block_efficient(outer1, outer2, inner1, inner2):
     
     outer_num3 = len(where(Oc==3)[0])
     inner_num3 = len(where(Ic==3)[0])
+    
+    # print(Oc, outer_num3)
+    # print(Ic, inner_num3)
     
     if outer_num3 - inner_num3 == 1:
         return outer_num3
