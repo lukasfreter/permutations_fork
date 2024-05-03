@@ -697,21 +697,15 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
             # we have to compute matrix elements of sigma^- and sigma^+. Therefore, check first if 
             # number of spin up in "right" and "right_to_couple" as well as "left" and "left_to_coupole" vary by one
             if (sum(left[1:]) - sum(left_to_couple[1:]) == 1) and (sum(right[1:]) - sum(right_to_couple[1:]) == 1):       
+                # Get the number of permutations, that contribute. 
+                #deg = degeneracy_gamma_changing_block(left[1:], right[1:], left_to_couple[1:], right_to_couple[1:]) #FIND A MORE EFFICIENT METHOD                
                 
-                Oc = left[1:] + 2*right[1:]
-                Ic = left_to_couple[1:] + 2*right_to_couple[1:]
-   
-                # Get the number of permutations, that contribute
-                deg = degeneracy_gamma_changing_block(left[1:], right[1:], left_to_couple[1:], right_to_couple[1:]) #FIND A MORE EFFICIENT METHOD
+                deg = degeneracy_gamma_changing_block_efficient(left[1:], right[1:], left_to_couple[1:], right_to_couple[1:])                
                 Xim = get_element(c_ops[1], [0, 1],[0, 0]) # nonzero element: equal photon numbers and spin transition from up to down
                 Xdagnj = get_element(c_ops_dag[1], [0, 0],[0, 1]) # nonzero element: equal photon number as spin transition from down to up
                 L1_line[0,count] = L1_line[0,count] + Xim*Xdagnj*deg
                 
-                print(Oc)
-                print(Ic)
-                print(deg, '\n')
-                
-                
+                    
             
     L0_line = csr_matrix(L0_line)
     L1_line = csr_matrix(L1_line)
@@ -751,7 +745,7 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
 def degeneracy_gamma_changing_block(outer1, outer2, inner1, inner2):
     """Find simultaneous permutation of inner1 and inner2, such that all but one
     spin index align, and in exactly the same positions. This is necessary
-    for calculating the Lindblad operator of sigma minus. """
+    for calculating the Lindblad operator of sigma minus. Inefficient way """
     from itertools import permutations
     from numpy import array, concatenate, where, not_equal
     
@@ -773,6 +767,25 @@ def degeneracy_gamma_changing_block(outer1, outer2, inner1, inner2):
                 perms.append(concatenate((inner1_cp, inner2_cp)))
 
     return len(perms)
+
+def degeneracy_gamma_changing_block_efficient(outer1, outer2, inner1, inner2):
+    """Find simultaneous permutation of inner1 and inner2, such that all but one
+    spin index align, and in exactly the same positions. This is necessary
+    for calculating the Lindblad operator of sigma minus. Inefficient way """
+    from itertools import permutations
+    from numpy import array, concatenate, where, not_equal
+    Oc = outer1 + 2*outer2
+    Ic = inner1 + 2*inner2
+    
+    outer_num3 = len(where(Oc==3)[0])
+    inner_num3 = len(where(Ic==3)[0])
+    
+    if outer_num3 - inner_num3 == 1:
+        return outer_num3
+    else:
+        return 0
+
+
 
 
 def align_zeros(left, left_to_couple, right_to_couple):
@@ -1403,10 +1416,18 @@ def setup_rho(rho_p, rho_s):
     with photon in state rho_p and all spins in state rho_s"""
     
     from indices import indices_elements
-    from numpy import zeros
+    from numpy import zeros, isclose
     
         
     num_elements = len(indices_elements)
+    
+    if isclose(rho_p[0,0],1) and isclose(rho_s[0,0],1):
+        # This is the superfluoresence initial condition, i.e. zero photons and all spins up. 
+        # This is very easily initialized by all blocks zero, instead of the first entry of the last block
+        rho_vec = zeros(num_elements*ldim_p*ldim_p)
+        rho_vec[0] = 1
+        return rho_vec
+            
     
     rho_vec = zeros(ldim_p*ldim_p*num_elements, dtype = complex)
     for count_p1 in range(ldim_p):
