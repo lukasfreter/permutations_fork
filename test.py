@@ -126,7 +126,7 @@ ops = [n,p] # operators to calculate expectations for
 
 # PROPAGATE
 t0=time()
-resultscomp = time_evolve(L, initial, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
+resultscomp = time_evolve(L, initial, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=False)
 runtime=time()-t0
 print('Time evolution complete in {:.0f}s'.format(runtime), flush=True)
 
