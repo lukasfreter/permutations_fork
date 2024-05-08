@@ -18,7 +18,6 @@ def list_equivalent_elements():
     """Generate basis list, needs to be run at the beginning of
     each calculation"""
     
-    
     global indices_elements, indices_elements_inv
     
     from basis import nspins, ldim_p, ldim_s

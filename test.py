@@ -22,7 +22,7 @@ from expect import setup_convert_rho_nrs
 import pickle
 import operators
     
-ntls =15#number 2LS
+ntls =7#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -31,9 +31,9 @@ w0 = 1.0
 wc = 0.65
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
-kappa = 1e-02
-gamma = 0.1
-gamma_phi = 3e-02
+kappa = 0#1e-02
+gamma = 0#
+gamma_phi =0#1# 3e-02
 
 
 ################# BLOCK STRUCTURE ####################################
@@ -44,7 +44,7 @@ setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-l
 list_equivalent_elements() # create mapping to/from unique spin states
 setup_mapping_block(parallel=True)       # setup mapping between compressed density matrix and block form
 setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
-
+#sys.exit()
 
 # Initial state
 t0 = time()
@@ -55,7 +55,7 @@ print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 t0=time()
 L0,L1 = setup_Dicke_block1(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)
 print('setup L block in {:.1f}s'.format(time()-t0), flush=True)
-#sys.exit()
+sys.exit()
 
 n = tensor(create(nphot)*destroy(nphot), qeye(2))
 p = tensor(qeye(nphot), sigmap()*sigmam())
