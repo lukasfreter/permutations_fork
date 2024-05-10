@@ -2,6 +2,7 @@ convert_rho = None
 convert_rho_dic = {}
 convert_rho_block_dic = {}
 import numpy as np
+import sys
 from itertools import permutations
 
 def expect_comp(rho_list, ops):
