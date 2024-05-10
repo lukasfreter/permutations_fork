@@ -22,7 +22,7 @@ from expect import setup_convert_rho_nrs, setup_convert_rho_block_nrs
 import pickle
 import operators
     
-ntls =10#number 2LS
+ntls =5#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -38,6 +38,7 @@ gamma_phi =0.03
 
 ################# BLOCK STRUCTURE ####################################
 # SETUP
+t0_tot = time()
 print(f'Number of spins {ntls}')
 print('Block form optimized')
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
@@ -71,7 +72,7 @@ ops = [n,p] # operators to calculate expectations for
 t0=time()
 resultscomp_block = time_evolve_block(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
 # if save_states=False, only operator expectations and initial, final density matrices are recorded
-runtime=time()-t0
+runtime=time()-t0_tot
 print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
 
 
@@ -159,6 +160,71 @@ axes[1].set_ylabel(r'$\langle \sigma^+\sigma^-\rangle$')
 plt.legend()
 #fig.savefig('figures/example_block.png',dpi=300, bbox_inches='tight')
 plt.show()
+
+# store results
+params = {
+    'method': 'block_kirton',
+    'N': ntls,
+    'nphot': nphot,
+    'w0': w0,
+    'wc': wc,
+    'Delta': wc- w0,
+    'gamma': gamma,
+    'gamma_phi': gamma_phi,
+    'kappa': kappa,
+    'Omega': Omega,
+    'tmax': tmax,
+    'dt': dt,
+    'theta': 0.0
+    }
+res = {
+    't':ts_block,
+    'e_phot_tot': ns_block,
+    'e_excit_site': ps_block,    
+       }
+data = {
+        'params': params,
+        'results': res,
+        'runtime': runtime}
+
+fname = f'results/{params["method"]}_N{ntls}_Delta{params["Delta"]}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
+fname = f'results/{params["method"]}.pkl'
+# save results in pickle file
+with open(fname, 'wb') as handle:
+    pickle.dump(data,handle)
+    
+# store results
+params = {
+    'method': 'reference_block_kirton',
+    'N': ntls,
+    'nphot': nphot,
+    'w0': w0,
+    'wc': wc,
+    'Delta': wc- w0,
+    'gamma': gamma,
+    'gamma_phi': gamma_phi,
+    'kappa': kappa,
+    'Omega': Omega,
+    'tmax': tmax,
+    'dt': dt,
+    'theta': 0.0
+    }
+res = {
+    't':ts,
+    'e_phot_tot': ns,
+    'e_excit_site': ps,    
+       }
+data = {
+        'params': params,
+        'results': res,
+        'runtime': runtime}
+
+fname = f'results/{params["method"]}_N{ntls}_Delta{params["Delta"]}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
+fname = f'results/{params["method"]}.pkl'
+# save results in pickle file
+with open(fname, 'wb') as handle:
+    pickle.dump(data,handle)
+
 
 
 

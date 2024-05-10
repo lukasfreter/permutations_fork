@@ -58,7 +58,7 @@ def expect_comp_block(rho_list, nu, ops):
         # number of spins in the target rdm
         nrs = int(np.log(op.shape[0]//ldim_p)/np.log(ldim_s))
 
-        if nrs not in convert_rho_dic:
+        if nrs not in convert_rho_block_dic:
             raise TypeError('need to run setup_convert_rho_nrs({})'.format(nrs))
 
         # Only convert compressed matrices in rho
