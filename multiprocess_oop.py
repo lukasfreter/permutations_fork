@@ -26,7 +26,7 @@ testA.multiple_tasks()
 
 class B:
     def __init__(self):
-        self.big_data = np.arange(1e9) # 76MB
+        self.big_data = np.arange(1e7) # 76MB
         pass
 
     @staticmethod
@@ -51,7 +51,7 @@ def one_task(x):
 
 class C:
     def __init__(self):
-        self.big_data = np.arange(1e9) # 76MB
+        self.big_data = np.arange(1e7) # 76MB
         pass
 
     def multiple_tasks(self):
