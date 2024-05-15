@@ -325,12 +325,16 @@ def time_evolve_block(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rto
     
     # Now with all rhos, I can calculate the expectation values:
     output.expect = zeros((len(expect_oper), ntimes), dtype=complex)
+    # for t_idx in range(ntimes):
+    #     # build density matrix out of blocks
+    #     rho_compressed = zeros(dim_rho_compressed, dtype=complex)
+    #     for nu in range(num_blocks):
+    #         rho_compressed[mapping_block[nu]] = rhos[nu][t_idx]
+    #     output.expect[:,t_idx] = array(expect_comp([rho_compressed], expect_oper)).flatten()
+            
     for t_idx in range(ntimes):
-        # build density matrix out of blocks
-        rho_compressed = zeros(dim_rho_compressed, dtype=complex)
         for nu in range(num_blocks):
-            rho_compressed[mapping_block[nu]] = rhos[nu][t_idx]
-            output.expect[:,t_idx] = array(expect_comp([rho_compressed], expect_oper)).flatten()
+            output.expect[:,t_idx] = output.expect[:,t_idx] +  array(expect_comp_block([rhos[nu][t_idx]],nu, expect_oper)).flatten()
 
         
     

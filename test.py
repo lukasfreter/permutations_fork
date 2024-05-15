@@ -18,11 +18,11 @@ from indices import list_equivalent_elements, setup_mapping_block
 from operators import basis, tensor, destroy, create, qeye, sigmap, sigmam
 from models import setup_Dicke_block, setup_Dicke, setup_Dicke_block1
 from propagate import time_evolve, time_evolve_block, time_evolve_block1, time_evolve_block2
-from expect import setup_convert_rho_nrs
+from expect import setup_convert_rho_nrs, setup_convert_rho_block_nrs
 import pickle
 import operators
     
-ntls =15#number 2LS
+ntls =5#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -31,20 +31,22 @@ w0 = 1.0
 wc = 0.65
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
-kappa = 1e-02
-gamma = 0.1
-gamma_phi = 3e-02
+kappa = 0.011
+gamma = 0.02
+gamma_phi =0.03
 
 
 ################# BLOCK STRUCTURE ####################################
 # SETUP
+t0_tot = time()
 print(f'Number of spins {ntls}')
 print('Block form optimized')
 setup_basis(ntls, 2,nphot) # defines global variables for backend ('2' for two-level system)
 list_equivalent_elements() # create mapping to/from unique spin states
 setup_mapping_block(parallel=True)       # setup mapping between compressed density matrix and block form
 setup_convert_rho_nrs(1)   # conversion matrix from full to photon + single-spin RDM
-
+setup_convert_rho_block_nrs(1)
+#sys.exit()
 
 # Initial state
 t0 = time()
@@ -55,6 +57,12 @@ print('setup initial state block in {:.1f}s'.format(time()-t0), flush=True)
 t0=time()
 L0,L1 = setup_Dicke_block1(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma)
 print('setup L block in {:.1f}s'.format(time()-t0), flush=True)
+
+# import numpy as np
+# for i in range(len(indi.mapping_block)):
+#     print(i)
+#     assert np.allclose(L0[i].todense(), L.L0[i].todense())
+
 #sys.exit()
 
 n = tensor(create(nphot)*destroy(nphot), qeye(2))
@@ -64,7 +72,7 @@ ops = [n,p] # operators to calculate expectations for
 t0=time()
 resultscomp_block = time_evolve_block(L0,L1,initial_block, tmax, dt, ops, atol=1e-8, rtol=1e-8, save_states=True)
 # if save_states=False, only operator expectations and initial, final density matrices are recorded
-runtime=time()-t0
+runtime=time()-t0_tot
 print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
 
 
@@ -152,6 +160,71 @@ axes[1].set_ylabel(r'$\langle \sigma^+\sigma^-\rangle$')
 plt.legend()
 #fig.savefig('figures/example_block.png',dpi=300, bbox_inches='tight')
 plt.show()
+
+# store results
+params = {
+    'method': 'block_kirton',
+    'N': ntls,
+    'nphot': nphot,
+    'w0': w0,
+    'wc': wc,
+    'Delta': wc- w0,
+    'gamma': gamma,
+    'gamma_phi': gamma_phi,
+    'kappa': kappa,
+    'Omega': Omega,
+    'tmax': tmax,
+    'dt': dt,
+    'theta': 0.0
+    }
+res = {
+    't':ts_block,
+    'e_phot_tot': ns_block,
+    'e_excit_site': ps_block,    
+       }
+data = {
+        'params': params,
+        'results': res,
+        'runtime': runtime}
+
+fname = f'results/{params["method"]}_N{ntls}_Delta{params["Delta"]}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
+fname = f'results/{params["method"]}.pkl'
+# save results in pickle file
+with open(fname, 'wb') as handle:
+    pickle.dump(data,handle)
+    
+# store results
+params = {
+    'method': 'reference_block_kirton',
+    'N': ntls,
+    'nphot': nphot,
+    'w0': w0,
+    'wc': wc,
+    'Delta': wc- w0,
+    'gamma': gamma,
+    'gamma_phi': gamma_phi,
+    'kappa': kappa,
+    'Omega': Omega,
+    'tmax': tmax,
+    'dt': dt,
+    'theta': 0.0
+    }
+res = {
+    't':ts,
+    'e_phot_tot': ns,
+    'e_excit_site': ps,    
+       }
+data = {
+        'params': params,
+        'results': res,
+        'runtime': runtime}
+
+fname = f'results/{params["method"]}_N{ntls}_Delta{params["Delta"]}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
+fname = f'results/{params["method"]}.pkl'
+# save results in pickle file
+with open(fname, 'wb') as handle:
+    pickle.dump(data,handle)
+
 
 
 

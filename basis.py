@@ -455,8 +455,8 @@ def setup_L_block1(H, c_ops,num_threads, progress=False, parallel=False):
             idx = mapping_block[nu][count]  # this is the index of the current element in the conventional representation
             #print(idx)
             #print(f'Element: {arglist[idx][0]}')
-            # if nu==1:
-            #     print('kek')
+            if nu==1 and count == 3:
+                print('kek')
             line0, line1 = calculate_L_line_block1(*arglist[idx]) # calculate the whole line of liouvillian for this element
             line_block_nu.append(line0)  # get the elements that couple to the same nu
                        
@@ -594,6 +594,48 @@ def calculate_L_line_block1(element, H, c_ops, c_ops_2, c_ops_dag, length):
                         # calculate H_ijn'm' labelled as Hnj
                         Hnj = get_element(H, [right_to_couple_permute[0], right_to_couple_permute[1+count_ns]],[right[0], right[1+count_ns]])
                         L0_line[0,count] = L0_line[0,count] + 1j*Hnj*deg
+                        
+        # Commutator term with direct computation of matrix elements, if w0, wc, g are known. Use this for new code basis
+        # diagonal terms:
+        # w0 = 1.0
+        # wc = 0.65
+        # from numpy import sqrt
+        # g = 0.4/sqrt(7)
+        # if (left == left_to_couple).all() and (right == right_to_couple).all():
+        #     sum1 = sum(left[1:])
+        #     sum2 = sum(right[1:])
+        #     L0_line[0,count] = L0_line[0,count] + 1j * ( (right[0]-left[0])*wc +(sum1-sum2)*w0 )
+        # elif(states_compatible(right, right_to_couple)):
+        #     # if they are compatible, permute left_to_couple appropriately for proper H element
+        #     left_to_couple_permute = copy(left_to_couple)
+        #     if not (right_to_couple == right).all():
+        #         # if they are compatible but not equal, we need to permute left_to_couple appropriately, to get correct matrix element of H
+        #         left_to_couple_permute[1:] = permute_compatible(right[1:],right_to_couple[1:],left_to_couple[1:])
+        #     deg = degeneracy_outer_invariant_optimized(left[1:], right[1:], left_to_couple_permute[1:])
+        #     # check if photon number in left state increases or decreases and
+        #     # if all but one spin agree, and that the spin that does not agree is down in right and up in right_to_couple
+        #     if (left[0] - left_to_couple[0]) == 1 and sum(left[1:])-sum(left_to_couple[1:]) == 1 and (left[1:]==left_to_couple_permute[1:]).sum() ==nspins-1: # need matrix element of adag*sigmam
+        #         L0_line[0,count] = L0_line[0,count] - 1j*g*deg * sqrt(left[0])
+        #     elif left[0] - left_to_couple[0] == -1 and sum(left[1:])-sum(left_to_couple[1:]) == -1 and (left[1:]==left_to_couple_permute[1:]).sum() ==nspins-1: # need matrix element of a*sigmap
+        #         L0_line[0,count] = L0_line[0,count] - 1j*g*deg * sqrt(left[0]+1)   
+                
+            
+            
+        # elif(states_compatible(left, left_to_couple)):            
+        #     # if they are compatible, permute right_to_couple appropriately for proper H element
+        #     right_to_couple_permute = copy(right_to_couple)
+        #     if not (left_to_couple == left).all():
+        #         right_to_couple_permute[1:] = permute_compatible(left[1:],left_to_couple[1:],right_to_couple[1:])
+        #     deg = degeneracy_outer_invariant_optimized(left[1:], right[1:], right_to_couple_permute[1:])
+        #     # check if photon number in right state increases or decreases and
+        #     # if all but one spin agree, and that the spin that does not agree is down in right and up in right_to_couple
+        #     if (right[0] - right_to_couple[0]) == 1 and sum(right[1:])-sum(right_to_couple[1:]) == 1 and (right[1:]==right_to_couple_permute[1:]).sum() ==nspins-1: # need matrix element of a*sigmap
+        #         L0_line[0,count] = L0_line[0,count] + 1j*g*deg * sqrt(right[0])
+        #     elif right[0] - right_to_couple[0] == -1 and sum(right[1:])-sum(right_to_couple[1:]) == -1 and (right[1:]==right_to_couple_permute[1:]).sum() ==nspins-1: # need matrix element of adag*sigmam
+        #         L0_line[0,count] = L0_line[0,count] + 1j*g*deg * sqrt(right[0]+1)
+                
+            
+        
         
                 
         # Repeat for the collapse operators. Ordering: sigma_z, sigma^-, a
