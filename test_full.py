@@ -26,7 +26,7 @@ import operators
 
 ntls = int(sys.argv[1]) # number 2LS
 nphot = ntls+1# photon fock space truncation
-tmax = 200.0
+tmax = 100.0
 dt = 0.2 # timestep
 
 w0 = 1#1.0
