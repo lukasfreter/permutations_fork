@@ -405,6 +405,155 @@ def time_evolve_block1(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rt
             output.rho.append(rho) # record final state in this case (otherwise already recorded)
     
         return output
+    
+    
+    
+    
+    
+    
+    
+def time_evolve_block_interp(L0,L1, initial, tend, dt, expect_oper=None, atol=1e-5, rtol=1e-5,
+                progress=False, save_states=None):
+    """ Time evolution of the block structure without resetting the solver at each step.
+    Do so by interpolating feedforward.
+    
+    method: 'bdf' = stiff, 'adams' = non-stiff
+    
+    """
+    from scipy.integrate import ode
+    from numpy import zeros, array
+    from expect import expect_comp_block
+    from indices import mapping_block
+    from basis import ldim_p
+    from indices import indices_elements
+    from time import time
+    from scipy.interpolate import interp1d
+    
+    print('Starting time evolution serial block (interpolation)...')
+    tstart = time()
+           
+    # store number of elements in each block
+    num_blocks = len(mapping_block)
+    blocksizes = [len(mapping_block[nu]) for nu in range(num_blocks)]
+    nu_max = num_blocks -1
+    t0 = 0
+    ntimes = round(tend/dt)+1
+    
+    if progress:
+        bar = Progress(2*(ntimes-1)*num_blocks, description='Time evolution under L...', start_step=1)
+    if save_states is None:
+        save_states = True if expect_oper is None else False
+    if not save_states and expect_oper is None:
+        print('Warning: Not recording states or any observables. Only initial and final'\
+                ' compressed state will be returned.')
+            
+
+    # set up results:
+    result = Results()
+    result.t = zeros(ntimes)
+    if save_states:
+        result.rho = [zeros((blocksizes[nu], ntimes), dtype=complex) for nu in range(num_blocks)]
+    else: # only record initial and final states
+        result.rho = [zeros((blocksizes[nu], 2), dtype=complex) for nu in range(num_blocks)]
+        
+    if expect_oper is not None:
+        result.expect = zeros((len(expect_oper), ntimes), dtype=complex)
+    
+    #Record initial values
+    result.t[0] = t0            
+    
+    # first calculate block nu_max. Setup integrator
+    r = ode(_intfunc).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
+    r.set_initial_value(initial[nu_max],t0).set_f_params(L0[nu_max])
+    
+    # temporary variable to store states
+    #rhos = [ np.zeros((len(self.indices.mapping_block[i]), ntimes), dtype=complex) for i in range(num_blocks)]
+    #rhos[nu][:,0] = self.rho.initial[nu]
+
+    rho_nu = zeros((blocksizes[nu_max], ntimes), dtype = complex)
+    rho_nu[:,0] = initial[nu_max] 
+    
+    # using the exact solver times for the feedforward interpolation instead of using linearly spaced time array makes a (small) difference
+    solver_times = zeros(ntimes)
+    solver_times[0] = t0
+
+    n_t=1
+    while r.successful() and n_t<ntimes:
+        rho = r.integrate(r.t+dt)
+        result.t[n_t] = r.t
+        solver_times[n_t] = r.t
+        #rhos[nu][:,n_t] = rho
+        rho_nu[:,n_t] = rho
+        n_t += 1
+        
+        if progress:
+            bar.update()
+            
+    # calculate nu_max part of expectation values
+    if expect_oper is not None:
+        # if progress:
+        #     bar = Progress(ntimes, description='Calculating expectation values...', start_step=1)
+            
+        for t_idx in range(ntimes):
+            #self.result.expect[:,t_idx] +=  np.array(self.expect_comp_block([rhos[nu][:,t_idx]],nu, expect_oper)).flatten()
+            result.expect[:,t_idx] +=  array(expect_comp_block([rho_nu[:,t_idx]],nu_max, expect_oper)).flatten()
+            if progress:
+                bar.update()
+    if save_states:
+        result.rho[nu_max] = rho_nu
+    else: # store initial and final states
+        result.rho[nu_max][:,0] = rho_nu[:,0]
+        result.rho[nu_max][:,1] = rho_nu[:,-1] 
+        
+    #self.result.t = np.arange(t0, self.tend+self.dt,self.dt)
+
+    
+    # Now, do the feed forward for all other blocks. Need different integration function, _intfunc_block_interp
+    for nu in range(num_blocks-2, -1,-1):           
+        #rho_interp = interp1d(self.result.t, rhos[nu+1], bounds_error=False, fill_value="extrapolate") # extrapolate results from previous block
+        rho_interp = interp1d(solver_times, rho_nu, bounds_error=False, fill_value="extrapolate") # interpolate results from previous block, rho_nu                  
+                   
+        r = ode(_intfunc_block_interp).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
+        r.set_initial_value(initial[nu],t0).set_f_params(L0[nu], L1[nu], rho_interp)
+        
+        #Record initial value
+        #rhos[nu][:,0] = (self.rho.initial[nu])
+        # Update rho_nu variable for current block
+        rho_nu = zeros((blocksizes[nu], ntimes), dtype=complex)
+        rho_nu[:,0] = initial[nu]
+        solver_times[0] = t0
+        
+        # integrate
+        n_t=1
+        while r.successful() and n_t<ntimes:
+            rho = r.integrate(r.t+dt)
+            #rhos[nu][:,n_t] = rho
+            solver_times[n_t] = r.t
+            rho_nu[:,n_t] = rho
+            n_t += 1
+
+            if progress:
+                bar.update()
+                
+        # calculate contribution of block nu to expectation values
+        if expect_oper is not None:
+            for t_idx in range(ntimes):
+                #self.result.expect[:,t_idx] +=  np.array(self.expect_comp_block([rhos[nu][:,t_idx]],nu, expect_oper)).flatten()
+                result.expect[:,t_idx] +=  array(expect_comp_block([rho_nu[:,t_idx]],nu, expect_oper)).flatten()
+                if progress:
+                    bar.update()
+        if save_states:
+            result.rho[nu] = rho_nu
+        else:
+            result.rho[nu][:,0] = rho_nu[:,0]
+            result.rho[nu][:,1] = rho_nu[:,-1] 
+
+    elapsed = time()-tstart
+    print(f'Complete {elapsed:.0f}s', flush=True)
+    return result
+    
+    
+    
 
 
 
@@ -430,6 +579,10 @@ def _intfunc_block(t,y, L0, L1, y1):
     """ For blocks in block structure that couple do different excitation, described
     by L1 and y1"""    
     return(L0.dot(y) + L1.dot(y1))
+
+def _intfunc_block_interp(t,y,L0,L1,y1_func):
+    """ Same as _intfunc_block, but where y1 is given as a function of time"""
+    return (L0.dot(y) + L1.dot(y1_func(t)))
 
 def steady(L, init=None, maxit=1e6, tol=None):
     
