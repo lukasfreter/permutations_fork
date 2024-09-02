@@ -18,17 +18,17 @@ import pickle
 import operators
 
 
-ntls = 20# number 2LS
+ntls = int(sys.argv[1])# number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 
-w0 = 2#1.0
-wc = 1#0.65
+w0 = 1.0
+wc = 0.65
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
-kappa = 0#1e-02
-gamma = 0#1e-03
+kappa = 1e-02
+gamma = 1e-03
 gamma_phi =3e-02
 
 # SETUP
@@ -48,7 +48,7 @@ t0=time()
 # we need factors of 1/2 and 1/4 to multiply w0 and gamma_phi, such that 
 # the w0 and gamma_phi we define above are equivalent in both codes
 
-L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False)
+L = setup_Dicke(wc, w0/2, 0.0, g, 0.0, kappa, gamma_phi/4, gamma, progress=False, parallel = True)
 
 print('setup L in {:.1f}s'.format(time()-t0), flush=True)
 
@@ -76,7 +76,7 @@ axes[1].set_ylabel(r'$\langle \sigma^+\sigma^-\rangle$')
 plt.show()
 
 params = {
-    'method': 'permutation',
+    'method': 'permutation_old',
     'N':ntls,
     'w0':w0,
     'wc':wc,
@@ -93,7 +93,8 @@ params = {
 res = {
        't':ts,
        'e_phot_tot':ns,
-       'e_excit_site':ps
+       'e_excit_site':ps,
+       'L': L
        }
 data = {
         'params':params,
@@ -101,9 +102,9 @@ data = {
         'runtime':runtime,
         }
 
-# filename = f'results/permutation_{params["method"]}_N{ntls}_Delta{wc-w0}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
-# filename='results/perm_comp.pkl'
-# with open(filename, 'wb') as handle:
-#     pickle.dump(data,handle)
+filename = f'results/{params["method"]}_N{ntls}_Delta{wc-w0}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}_dt{dt}.pkl'
+#filename='results/perm_comp.pkl'
+with open(filename, 'wb') as handle:
+    pickle.dump(data,handle)
     
 
