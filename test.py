@@ -23,13 +23,13 @@ import pickle
 import operators
 import scipy.sparse as sp
     
-ntls =10#number 2LS
+ntls =3#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 
 w0 = 1.0
-wc = 0.65
+wc = 1.0
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
 kappa = 0.011
