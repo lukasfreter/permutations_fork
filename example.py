@@ -18,7 +18,7 @@ import pickle
 import operators
 
 
-ntls = 15# number 2LS
+ntls = int(sys.argv[1])# number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
@@ -102,7 +102,7 @@ data = {
         'runtime':runtime,
         }
 
-filename = f'results/{params["method"]}_N{ntls}_Delta{wc-w0}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}.pkl'
+filename = f'results/{params["method"]}_N{ntls}_Delta{wc-w0}_Omega{Omega}_kappa{kappa}_gamma{gamma}_gammaphi{gamma_phi}_dt{dt}.pkl'
 #filename='results/perm_comp.pkl'
 with open(filename, 'wb') as handle:
     pickle.dump(data,handle)

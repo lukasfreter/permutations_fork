@@ -22,18 +22,18 @@ from expect import setup_convert_rho_nrs, setup_convert_rho_block_nrs
 import pickle
 import operators
     
-ntls =5#number 2LS
+ntls =2#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 200.0
 dt = 0.2 # timestep
 
 w0 = 1.0
-wc = 0.65
+wc = 1.0#0.65
 Omega = 0.4
 g = Omega / np.sqrt(ntls)
-kappa = 0.011
-gamma = 0.02
-gamma_phi =0.03
+kappa = 0#1e-02
+gamma = 0#1e-03
+gamma_phi = 0#3e-2
 
 
 ################# BLOCK STRUCTURE ####################################
@@ -160,6 +160,7 @@ axes[1].set_ylabel(r'$\langle \sigma^+\sigma^-\rangle$')
 plt.legend()
 #fig.savefig('figures/example_block.png',dpi=300, bbox_inches='tight')
 plt.show()
+sys.exit()
 
 # store results
 params = {
