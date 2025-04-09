@@ -32,7 +32,7 @@ import scipy.sparse as sp
 #                      'figure.dpi': 150})
     
 
-ntls =2#number 2LS
+ntls =5#number 2LS
 nphot = ntls+1# photon fock space truncation
 tmax = 250.0
 dt = 0.2 # timestep
@@ -42,7 +42,7 @@ wc = 0.0
 Omega = 0#0.4
 g = Omega / np.sqrt(ntls)
 kappa = 0.1
-gamma = 1e-01
+gamma = 0#1e-01
 gamma_phi=0# 0.1#2e-01
 
 
@@ -56,7 +56,7 @@ rot_x_dag = np.array([[np.cos(theta/2), 1j*np.sin(theta/2)],[1j*np.sin(theta/2),
 rho_phot = basis(nphot,0)
 rho_spin = sp.csr_matrix(rot_x @ basis(2,0) @ rot_x_dag)
 
-rho_phot = basis(nphot, nphot-1)
+rho_phot = basis(nphot, 2)
 rho_spin = basis(2,1)
 
 
@@ -108,6 +108,8 @@ ops = [n,p,n2] # operators to calculate expectations for
 
 t0=time()
 resultscomp_block = time_evolve_block_interp(L0,L1,initial_block, tmax, dt, ops, atol=1e-15, rtol=1e-15, save_states=False)
+# resultscomp_block = time_evolve_block(L0,L1,initial_block, tmax, dt, ops, atol=1e-15, rtol=1e-15, save_states=False)
+
 # if save_states=False, only operator expectations and initial, final density matrices are recorded
 runtime=time()-t0_tot
 print('Time evolution Block complete in {:.0f}s'.format(runtime), flush=True)
@@ -278,16 +280,18 @@ fname = f'results/{params["method"]}.pkl'
 
 
 
-fig, ax = plt.subplots(3)
+fig, ax = plt.subplots(3, figsize=(8,10))
+fig.suptitle(r'$N={N},\, \omega_c-\omega_0 = {Delta},\, g\sqrt{{N}} = {Omega}, \, \kappa={kappa},\,\gamma={gamma},\,\gamma_\phi = {gamma_phi},\,\theta={theta:.2f} $'.format(**params))
+
 ax[0].plot(ts_block, (ns_block - ns))
 ax[1].plot(ts_block, (ps_block - ps))
 # ax[2].plot(ts_block[1:], g2_block)
 # ax[2].plot(ts[1:], g2_perm)
 
-# ax[2].plot(ts_block, ns_block, label='block')
-# ax[2].plot(ts, ns, ls='--', label='permutation')
-ax[2].plot(ts_block, ps_block, label='block')
-ax[2].plot(ts, ps, ls='--', label='permutation')
+ax[2].plot(ts_block, ns_block, label='block')
+ax[2].plot(ts, ns, ls='--', label='permutation')
+# ax[2].plot(ts_block, ps_block, label='block')
+# ax[2].plot(ts, ps, ls='--', label='permutation')
 ax[2].legend()
 
 ax[0].set_ylabel('difference n')
@@ -295,7 +299,7 @@ ax[1].set_ylabel('difference spin')
 ax[2].set_ylabel('g2(0)')
 for a in ax:
     a.set_xlabel('t')
-# plt.tight_layout()
+plt.tight_layout()
 plt.show()
 sys.exit()
 
