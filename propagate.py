@@ -511,7 +511,7 @@ def time_evolve_block_interp(L0,L1, initial, tend, dt, expect_oper=None, atol=1e
     # Now, do the feed forward for all other blocks. Need different integration function, _intfunc_block_interp
     for nu in range(num_blocks-2, -1,-1):           
         #rho_interp = interp1d(self.result.t, rhos[nu+1], bounds_error=False, fill_value="extrapolate") # extrapolate results from previous block
-        rho_interp = interp1d(solver_times, rho_nu, bounds_error=False, fill_value="extrapolate") # interpolate results from previous block, rho_nu                  
+        rho_interp = interp1d(solver_times, rho_nu, bounds_error=False,kind='linear', fill_value='extrapolate') # interpolate results from previous block, rho_nu                  
                    
         r = ode(_intfunc_block_interp).set_integrator('zvode', method = 'bdf', atol=atol, rtol=rtol)
         r.set_initial_value(initial[nu],t0).set_f_params(L0[nu], L1[nu], rho_interp)
